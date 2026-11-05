@@ -17,7 +17,7 @@ AGP 9.5.0, Kotlin 2.4.21, KSP 2.3.13, Compose BOM 2026.09.00, Media3 1.11.1, New
 ## Progress
 - [x] Part 1: setup + CI. Pushed to main; CI green, artifact `dkord-debug-apk` uploaded.
 - [x] Part 2: StreamResolver, search, login + auth. CI green (13 unit tests + APK). Pushed.
-- [ ] Part 3: player service
+- [x] Part 3: player service. CI green (20 unit tests + APK). Pushed.
 - [ ] Part 4: downloads, Room, playlists
 - [ ] Part 5: UI, settings, translations, polish
 
@@ -47,3 +47,18 @@ Actions tab: "Build debug APK" is green and artifact `dkord-debug-apk` installs 
 
 ## Environment notes (added)
 - Local JVM test loop works: kotlinc 2.4.21 in /tmp/kotlinc, jars in /tmp/npe (may vanish if sandbox resets). Needs `/swapfile` (1.5G) and `JAVA_OPTS=-Xmx700m`. Gradle itself cannot run here; use `gh run watch`.
+
+## Part 3 summary (what exists, `app/src/main/java/app/dkord/player/`)
+- `PlaybackService` (MediaSessionService, foregroundServiceType=mediaPlayback): ExoPlayer with audio focus (handleAudioFocus=true), becoming-noisy handling, wake mode network. Media3 builds the notification/lock-screen/Bluetooth handling. `MediaButtonReceiver` is declared so headset buttons restart playback after process death (uses `onPlaybackResumption` + `QueueStore`).
+- Tracks are queued as `dkord://track/<videoId>`. `StreamUriResolver` resolves the real URL when ExoPlayer opens it (always fresh), sets cache key `<id>|<itag>`. `OpenRangeResolver` adds `Range: bytes=0-` for open reads (VERIFIED: without it googlevideo throttles to ~30KB/s). Data source chain: Resolving(dkord->url) -> CacheDataSource(AudioCache, 512MB LRU) -> Resolving(open Range) -> OkHttp.
+- 403/410 -> `StreamModule.invalidate(id)` + one automatic re-prepare per track (`urlRetryFor`). Other failures -> `PlaybackEvents.failures` (SharedFlow of `PlaybackFailure` with `PlaybackProblem` enum; UI maps to strings, `err_*` strings exist) and auto-skip to next track (max 3 in a row, not for NETWORK).
+- `PlayerController` (Koin singleton): lazy MediaController connection, `play/playNext/addToQueue/move/remove/skipTo/seek/shuffle/repeat/speed/sleep`, `state: StateFlow<PlayerUiState>`. Position polled every 500ms while playing.
+- `SleepTimer` (countdown with 8s volume fade + end-of-track via `setPauseAtEndOfMediaItems`), `SavedQueue`/`QueueStore` (SharedPreferences JSON, windowed to 500 tracks).
+- POST_NOTIFICATIONS requested in `MainActivity` on API 33+. Part 5 should replace the ask with a proper rationale UI.
+- Not done in Part 3 (intentionally): downloaded-file playback (Part 4 must make `StreamUriResolver` return local files for downloaded ids), audio-quality setting UI (`StreamConfig.quality` exists), cache size setting (AudioCache ctor takes maxBytes; Part 5 should add a setting + clear via `AudioCache.clear()`).
+
+## NOT verified on a device (Part 3)
+Everything in `player/` is compile-checked and the pure logic is unit-tested, but never run: notification appearance, lock-screen, Bluetooth buttons, audio focus on calls, background kill/restore, 403 recovery. See test list below.
+
+## Test after Part 3 (phone)
+1. Search -> Play all: audio starts within ~2s. 2. Lock screen shows controls with title/artist/art; pause/next work. 3. Press home, wait 5 min: still plays. 4. Swipe app from recents while playing: music continues; pause then swipe: service stops. 5. Bluetooth/headset play-pause, unplug headphones pauses. 6. Incoming call pauses and resumes after. 7. Shuffle/Repeat/Speed buttons, "Sleep 1m" fades out and pauses after ~1 min. 8. Kill app, press headset play: last queue resumes. 9. Airplane mode mid-song: error is shown, no crash. Rotate screen: playback continues. Send DebugLog lines on failure.
