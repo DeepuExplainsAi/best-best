@@ -15,4 +15,6 @@
     <string name="err_unavailable">This track is unavailable.</string>
     <string name="err_network">No connection. Check your internet and try again.</string>
     <string name="err_no_audio">No playable audio was found for this track.</string>
+    <string name="channel_downloads">Downloads</string>
+    <string name="downloading">Downloading music</string>
 </resources>

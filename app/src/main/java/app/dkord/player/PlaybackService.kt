@@ -23,7 +23,16 @@ import androidx.media3.session.MediaSessionService
 import app.dkord.MainActivity
 import app.dkord.R
 import app.dkord.core.DebugLog
+import app.dkord.data.download.DownloadManager
+import app.dkord.data.library.LibraryRepository
 import app.dkord.data.net.Http
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import androidx.media3.datasource.DefaultDataSource
 import app.dkord.data.stream.StreamModule
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -40,6 +49,9 @@ class PlaybackService : MediaSessionService() {
     private val config: StreamConfig by inject()
     private val queueStore: QueueStore by inject()
     private val sleepTimer: SleepTimer by inject()
+    private val downloads: DownloadManager by inject()
+    private val library: LibraryRepository by inject()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private var session: MediaSession? = null
     private lateinit var player: ExoPlayer
@@ -91,6 +103,7 @@ class PlaybackService : MediaSessionService() {
     override fun onDestroy() {
         saveQueueNow()
         sleepTimer.attach(null)
+        scope.cancel()
         session?.release(); session = null
         player.release()
         DebugLog.d("player", "service destroyed")
@@ -98,14 +111,18 @@ class PlaybackService : MediaSessionService() {
     }
 
     private fun buildPlayer(): ExoPlayer {
-        // Chain (outermost first): resolve dkord:// -> cache -> add open Range -> OkHttp.
+        // Chain (outermost first): resolve dkord:// (downloaded file wins) -> local file | cache -> add open Range -> OkHttp.
         val http = OkHttpDataSource.Factory(Http.client)
         val ranged = ResolvingDataSource.Factory(http, OpenRangeResolver())
         val cached = CacheDataSource.Factory()
             .setCache(audioCache.cache)
             .setUpstreamDataSourceFactory(ranged)
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
-        val resolving = ResolvingDataSource.Factory(cached, StreamUriResolver(streams) { config.quality })
+        val routed = SchemeRoutingDataSource.Factory(DefaultDataSource.Factory(this), cached)
+        val resolving = ResolvingDataSource.Factory(
+            routed,
+            StreamUriResolver(streams, { config.quality }, { id -> runBlocking { downloads.localUri(id) } }),
+        )
 
         return ExoPlayer.Builder(this)
             .setMediaSourceFactory(DefaultMediaSourceFactory(resolving).setLoadErrorHandlingPolicy(StreamErrorPolicy()))
@@ -162,6 +179,7 @@ class PlaybackService : MediaSessionService() {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             urlRetryFor = null
             saveQueueSoon()
+            mediaItem?.let { scope.launch { runCatching { library.recordPlayed(it.toTrack()) } } }
         }
 
         override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) = saveQueueSoon()

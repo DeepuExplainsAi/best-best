@@ -1,6 +1,11 @@
 package app.dkord.di
 
 import app.dkord.data.auth.AuthStore
+import app.dkord.data.db.AppDatabase
+import app.dkord.data.download.DownloadManager
+import app.dkord.data.download.DownloadStorage
+import app.dkord.data.library.LibraryRepository
+import app.dkord.data.settings.SettingsRepository
 import app.dkord.data.auth.CookieSource
 import app.dkord.data.stream.StreamModule
 import app.dkord.data.stream.StreamResolver
@@ -25,8 +30,13 @@ val appModule = module {
     single { StreamModule(get()) } bind StreamResolver::class
     single { InnerTubeClient(get<AuthStore>()) }
     single { MusicRepository(get()) }
-    single { AudioCache(androidContext()) }
-    single { StreamConfig() }
+    single { SettingsRepository(androidContext()) }
+    single { AudioCache(androidContext(), get<SettingsRepository>().settings.value.cacheMb * 1024L * 1024L) }
+    single { StreamConfig { get<SettingsRepository>().settings.value.quality } }
+    single { AppDatabase.build(androidContext()) }
+    single { LibraryRepository(get()) }
+    single { DownloadStorage(androidContext()) }
+    single { DownloadManager(androidContext(), get(), get()) }
     single { QueueStore(androidContext()) }
     single { SleepTimer(CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)) }
     single { PlayerController(androidContext(), get()) }

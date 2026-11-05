@@ -2,9 +2,12 @@
 
 package app.dkord.player
 
+import androidx.core.net.toUri
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.TransferListener
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
 import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
@@ -16,9 +19,9 @@ import java.io.IOException
 const val TRACK_SCHEME = "dkord"
 fun trackUri(videoId: String) = "$TRACK_SCHEME://track/$videoId"
 
-/** Mutable playback settings shared with the settings screen (Part 5). */
-class StreamConfig {
-    @Volatile var quality: AudioQuality = AudioQuality.HIGH
+/** Playback settings as seen by the player; reads the live value from the settings store. */
+class StreamConfig(private val source: () -> AudioQuality) {
+    val quality: AudioQuality get() = source()
 }
 
 /**
@@ -31,11 +34,14 @@ class StreamConfig {
 class StreamUriResolver(
     private val streams: StreamResolver,
     private val quality: () -> AudioQuality,
+    /** Finished download for this id (file:// or content://), or null. Offline playback uses it. */
+    private val localUri: (String) -> String? = { null },
 ) : ResolvingDataSource.Resolver {
 
     override fun resolveDataSpec(dataSpec: DataSpec): DataSpec {
         if (dataSpec.uri.scheme != TRACK_SCHEME) return dataSpec
         val id = dataSpec.uri.lastPathSegment ?: throw IOException("Bad track uri ${dataSpec.uri}")
+        localUri(id)?.let { return dataSpec.buildUpon().setUri(it.toUri()).setKey("local|$id").build() }
         val stream = runBlocking { streams.resolve(id, quality()) }
         val itag = ITAG.find(stream.url)?.groupValues?.get(1) ?: stream.mimeType
         val headers = HashMap(dataSpec.httpRequestHeaders)
@@ -63,4 +69,28 @@ class StreamErrorPolicy : DefaultLoadErrorHandlingPolicy() {
     override fun getRetryDelayMsFor(loadErrorInfo: LoadErrorHandlingPolicy.LoadErrorInfo): Long =
         if (PlaybackErrors.isFatalForLoad(loadErrorInfo.exception)) C.TIME_UNSET
         else super.getRetryDelayMsFor(loadErrorInfo)
+}
+
+/** Sends file/content uris (downloads) straight to [local], everything else through the cache chain. */
+class SchemeRoutingDataSource(private val local: DataSource, private val remote: DataSource) : DataSource {
+    private var active: DataSource? = null
+
+    override fun addTransferListener(transferListener: TransferListener) {
+        local.addTransferListener(transferListener); remote.addTransferListener(transferListener)
+    }
+
+    override fun open(dataSpec: DataSpec): Long {
+        val s = dataSpec.uri.scheme
+        active = if (s == "file" || s == "content") local else remote
+        return active!!.open(dataSpec)
+    }
+
+    override fun read(buffer: ByteArray, offset: Int, length: Int) = active!!.read(buffer, offset, length)
+    override fun getUri() = active?.uri
+    override fun getResponseHeaders() = active?.responseHeaders ?: emptyMap()
+    override fun close() { try { active?.close() } finally { active = null } }
+
+    class Factory(private val local: DataSource.Factory, private val remote: DataSource.Factory) : DataSource.Factory {
+        override fun createDataSource() = SchemeRoutingDataSource(local.createDataSource(), remote.createDataSource())
+    }
 }
