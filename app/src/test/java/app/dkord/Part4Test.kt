@@ -95,13 +95,13 @@ class Part4Test {
     }
 
     @Test fun safeNameStripsIllegalCharacters() {
-        assertEquals("AC DC - Back In Black.m4a", DownloadStorage.safeName("AC/DC", "Back: In *Black*?", "m4a"))
+        assertEquals("ACDC - Back In Black.m4a", DownloadStorage.safeName("AC/DC", "Back: In *Black*?", "m4a"))
         assertEquals("track.m4a", DownloadStorage.safeName("", "///", "m4a"))
         assertTrue(DownloadStorage.safeName("a".repeat(300), "b", "m4a").length <= 124)
     }
 
     @Test fun uniqueFileAddsCounter() {
-        val dir = File.createTempFile("d", "").let { it.delete(); it.mkdirs(); it }
+        val dir = File.createTempFile("dir", "x").let { it.delete(); it.mkdirs(); it }
         File(dir, "x.m4a").writeText("1")
         assertEquals("x (1).m4a", DownloadStorage.uniqueFile(dir, "x.m4a").name)
     }

@@ -67,7 +67,7 @@ class DownloadStorage(private val context: Context) {
     companion object {
         /** Removes characters Android file systems reject and keeps names a sane length. */
         fun safeName(artist: String, title: String, ext: String): String {
-            val base = "$artist - $title".replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "").replace(Regex("\\s+"), " ").trim().take(120).trim('.', ' ')
+            val base = "$artist - $title".replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "").replace(Regex("\\s+"), " ").trim().take(120).trim('.', ' ', '-')
             return "${base.ifBlank { "track" }}.$ext"
         }
 

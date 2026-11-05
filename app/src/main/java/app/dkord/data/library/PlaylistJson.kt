@@ -3,6 +3,7 @@ package app.dkord.data.library
 import app.dkord.core.Track
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 
 @Serializable
 data class PlaylistDoc(val name: String, val tracks: List<Track>)
@@ -23,7 +24,12 @@ object PlaylistJson {
 
     /** Throws [IllegalArgumentException] with a readable message for files that are not ours. */
     fun decode(text: String): LibraryDoc {
-        val doc = try { json.decodeFromString(LibraryDoc.serializer(), text) }
+        val doc = try {
+            // "app" has a default for exporting; on import it must really be in the file.
+            val root = json.parseToJsonElement(text).jsonObject
+            require("app" in root) { "Not a Dkord export" }
+            json.decodeFromJsonElement(LibraryDoc.serializer(), root)
+        } catch (e: IllegalArgumentException) { throw e }
         catch (e: Exception) { throw IllegalArgumentException("Not a valid playlist file", e) }
         require(doc.app == "dkord") { "Not a Dkord export" }
         require(doc.version <= 1) { "File was made by a newer version of the app" }
