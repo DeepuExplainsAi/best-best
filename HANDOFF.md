@@ -18,7 +18,7 @@ AGP 9.5.0, Kotlin 2.4.21, KSP 2.3.13, Compose BOM 2026.09.00, Media3 1.11.1, New
 - [x] Part 1: setup + CI. Pushed to main; CI green, artifact `dkord-debug-apk` uploaded.
 - [x] Part 2: StreamResolver, search, login + auth. CI green (13 unit tests + APK). Pushed.
 - [x] Part 3: player service. CI green (20 unit tests + APK). Pushed.
-- [ ] Part 4: downloads, Room, playlists
+- [x] Part 4: downloads, Room, playlists. CI green (tests + APK). Pushed.
 - [ ] Part 5: UI, settings, translations, polish
 
 ## Test after Part 1
@@ -62,3 +62,22 @@ Everything in `player/` is compile-checked and the pure logic is unit-tested, bu
 
 ## Test after Part 3 (phone)
 1. Search -> Play all: audio starts within ~2s. 2. Lock screen shows controls with title/artist/art; pause/next work. 3. Press home, wait 5 min: still plays. 4. Swipe app from recents while playing: music continues; pause then swipe: service stops. 5. Bluetooth/headset play-pause, unplug headphones pauses. 6. Incoming call pauses and resumes after. 7. Shuffle/Repeat/Speed buttons, "Sleep 1m" fades out and pauses after ~1 min. 8. Kill app, press headset play: last queue resumes. 9. Airplane mode mid-song: error is shown, no crash. Rotate screen: playback continues. Send DebugLog lines on failure.
+
+## Environment notes (Part 4 session)
+- Sandbox can reset mid-session (BRIDGE_OFFLINE): re-run `git config user.name/email` and `gh auth setup-git` before pushing.
+- Python heredocs sometimes hang the tool: write the script to /tmp/x.py first, then run it. Verify with `git status`/grep after.
+
+## Part 4 summary (what exists)
+- `data/db/`: Room `AppDatabase` v1 (exportSchema=false): tracks, playlists, playlist_items (position), liked, history, downloads (state QUEUED/RUNNING/PAUSED/DONE/FAILED, bytes/total/mime/localUri). DAOs in `Daos.kt`.
+- `data/library/LibraryRepository`: playlist CRUD, add (dedupe)/remove/move, liked toggle, history (kept 300; PlaybackService records every played item), `exportJson/importJson` using `PlaylistJson` (`LibraryDoc`, app="dkord", version 1; rejects foreign files).
+- `data/settings/SettingsRepository` (DataStore, `settings: StateFlow<Settings>`): quality, theme (SYSTEM/LIGHT/DARK/AMOLED), dynamicColor, downloadTree (SAF uri), cacheMb. `StreamConfig` now reads quality live from it. NOTE: AudioCache max size is read once at process start; a changed cacheMb applies on next app start.
+- `data/download/`: `DownloadManager` (enqueue/pause/resume/pauseAll/resumeAll/remove/localUri, `downloads()` Flow), `DownloadWorker` (CoroutineWorker, foreground dataSync, one track at a time, unique work "downloads" APPEND_OR_REPLACE, resets RUNNING->QUEUED on start), `TrackDownloader` (resolve preferM4a, Range resume only when mime equal, 403 -> invalidate + retry, 4 attempts), `Mp4Tagger` (pure Kotlin: title/artist/album/cover in moov/udta/meta/ilst, shifts stco/co64; unit-tested), `DownloadStorage` (app Music/Dkord folder or SAF tree; `keepAccess(uri)` must be called after the folder picker).
+- Offline playback: `StreamUriResolver` takes `localUri(id)`; `SchemeRoutingDataSource` sends file/content uris to DefaultDataSource, remote to cache chain. Downloaded files whose file was deleted are dropped from DB on next play.
+- Manifest: FOREGROUND_SERVICE_DATA_SYNC + SystemForegroundService type merge. Webm (opus) fallback downloads are saved untagged as .webm.
+- Tests: `Part4Test` (tagger, names, JSON). Not unit-tested: Room DAOs, worker (need device).
+
+## NOT verified on a device (Part 4)
+Download notification, pause/resume mid-file, kill app during download then resume, SAF folder output, offline playback in airplane mode, tags visible in a file manager/music player.
+
+## Test after Part 4
+UI for this arrives in Part 5, so test then: download 2 songs, pause one, kill app, reopen -> resumes; airplane mode -> downloaded song plays; check file in Music/Dkord has title+cover in another player.
