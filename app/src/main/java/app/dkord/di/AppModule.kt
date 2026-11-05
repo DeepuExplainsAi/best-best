@@ -5,6 +5,8 @@ import app.dkord.data.db.AppDatabase
 import app.dkord.data.download.DownloadManager
 import app.dkord.data.download.DownloadStorage
 import app.dkord.data.library.LibraryRepository
+import app.dkord.data.lyrics.LyricsRepository
+import app.dkord.ui.common.Actions
 import app.dkord.data.settings.SettingsRepository
 import app.dkord.data.auth.CookieSource
 import app.dkord.data.stream.StreamModule
@@ -40,4 +42,6 @@ val appModule = module {
     single { QueueStore(androidContext()) }
     single { SleepTimer(CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)) }
     single { PlayerController(androidContext(), get()) }
+    single { LyricsRepository() }
+    single { Actions(get(), get(), get()) }
 }
