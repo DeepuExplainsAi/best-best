@@ -86,6 +86,14 @@ fun App() {
     fun pop() { stack = stack.dropLast(1) }
     fun play(list: List<Track>, i: Int) = player.play(list, i)
 
+    // Fetch the account name once after sign-in so Settings can show who is signed in.
+    val auth: app.dkord.data.auth.AuthStore = koinInject()
+    val repo: app.dkord.data.yt.MusicRepository = koinInject()
+    val loggedIn by auth.loggedIn.collectAsState()
+    LaunchedEffect(loggedIn) {
+        if (loggedIn && auth.accountName == null) runCatching { repo.account() }.getOrNull()?.let { (n, p) -> auth.accountName = n; auth.accountPhoto = p }
+    }
+
     // Playback failures -> localized message (the service cannot reach the UI directly).
     val msgs = mapOf(
         PlaybackProblem.BOT_CHECK to stringResource(R.string.err_bot_check), PlaybackProblem.AGE_RESTRICTED to stringResource(R.string.err_age_restricted),
