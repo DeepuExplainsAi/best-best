@@ -103,7 +103,7 @@ fun App() {
     BackHandler(enabled = !playerOpen && stack.isEmpty() && tab != Tab.HOME) { tab = Tab.HOME }
 
     val top = stack.lastOrNull()
-    val onItem = { i: app.dkord.core.BrowseItem ->
+    fun onItem(i: app.dkord.core.BrowseItem) {
         if (i.kind == ItemKind.SONG) i.track?.let { play(listOf(it), 0) } else push(i.toDest())
     }
 
@@ -132,8 +132,8 @@ fun App() {
                 label = "dest",
             ) { dest ->
                 when (dest) {
-                    null -> TabContent(tab, ::say, { push(Dest.Settings) }, ::push, onItem, ::play, { menuTrack = it })
-                    is Dest.Detail -> DetailScreen(dest.toItem(), ::pop, onItem, ::play, { menuTrack = it }, { pickTracks = it })
+                    null -> TabContent(tab, ::say, { push(Dest.Settings) }, ::push, ::onItem, ::play, { menuTrack = it })
+                    is Dest.Detail -> DetailScreen(dest.toItem(), ::pop, ::onItem, ::play, { menuTrack = it }, { pickTracks = it })
                     is Dest.Playlist -> LocalPlaylistScreen(dest.id, ::pop, ::play) { menuTrack = it }
                     Dest.Liked -> LikedScreen(::pop, ::play) { menuTrack = it }
                     Dest.Recent -> RecentScreen(::pop, ::play) { menuTrack = it }
