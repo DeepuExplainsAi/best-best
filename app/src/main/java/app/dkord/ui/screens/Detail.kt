@@ -103,7 +103,7 @@ fun DetailScreen(
 ) {
     val repo: MusicRepository = koinInject()
     val actions: Actions = koinInject()
-    val vm = koinVm(key = item.kind.name + item.id) { DetailViewModel(repo, item) }
+    val vm = koinVm(key = "${item.kind.name}|${item.id}|${item.params.orEmpty()}") { DetailViewModel(repo, item) }
     val page by vm.page.collectAsState()
     val playing by actions.player.state.collectAsState()
 

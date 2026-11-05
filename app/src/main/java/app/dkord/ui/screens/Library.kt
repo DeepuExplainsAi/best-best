@@ -58,6 +58,8 @@ import app.dkord.ui.common.SectionTitle
 import app.dkord.ui.common.ShelfRow
 import app.dkord.ui.common.TextInputDialog
 import app.dkord.ui.common.koinVm
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -116,7 +118,7 @@ fun LibraryScreen(
         uri ?: return@rememberLauncherForActivityResult
         scope.launch {
             runCatching {
-                val text = ctx.contentResolver.openInputStream(uri)!!.bufferedReader().use { it.readText() }
+                val text = withContext(Dispatchers.IO) { ctx.contentResolver.openInputStream(uri)!!.bufferedReader().use { it.readText() } }
                 library.importJson(text)
             }.onSuccess { onMessage(importMsg.format(it)) }.onFailure { onMessage(importFail) }
         }
@@ -126,7 +128,7 @@ fun LibraryScreen(
         scope.launch {
             runCatching {
                 val json = library.exportJson()
-                ctx.contentResolver.openOutputStream(uri, "wt")!!.bufferedWriter().use { it.write(json) }
+                withContext(Dispatchers.IO) { ctx.contentResolver.openOutputStream(uri, "wt")!!.bufferedWriter().use { it.write(json) } }
             }.onSuccess { onMessage(exported) }.onFailure { onMessage(importFail) }
         }
     }

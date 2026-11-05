@@ -12,6 +12,7 @@ import androidx.work.WorkerParameters
 import app.dkord.R
 import app.dkord.core.DebugLog
 import app.dkord.data.db.AppDatabase
+import app.dkord.data.db.DownloadState
 import app.dkord.data.db.DownloadWithTrack
 import app.dkord.data.settings.SettingsRepository
 import app.dkord.data.stream.StreamError
@@ -56,9 +57,12 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
     /** Runs one download as a child job so pause/cancel can stop just that one. */
     private suspend fun runOne(item: DownloadWithTrack) = coroutineScope {
         val id = item.download.trackId
-        val job = async { download(item) }
+        // Lazy + register + recheck: a pause/remove that landed between "claim" and "register" is seen here.
+        val job = async(start = kotlinx.coroutines.CoroutineStart.LAZY) { download(item) }
         manager.active[id] = job
         try {
+            if (dao.get(id)?.state != DownloadState.RUNNING) { job.cancel(); return@coroutineScope }
+            job.start()
             job.await()
         } catch (e: CancellationException) {
             // Cancelled by pause/remove: the caller already set the new state. If the *worker* was
@@ -81,25 +85,17 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
         try {
             val quality = settings.settings.value.quality
             val downloader = TrackDownloader(streams, http, streams::invalidate)
-            val res = downloader.fetch(id, quality, part, item.download.mime) { bytes, total, mime ->
+            val res = downloader.fetch(id, quality, part, item.download.mime) { bytes, total, ident ->
                 val now = System.currentTimeMillis()
                 if (now - lastWrite >= 500) {
                     lastWrite = now
-                    // Not suspending: fire-and-forget would reorder writes, so block briefly on the DB thread.
-                    kotlinx.coroutines.runBlocking {
-                        dao.setPartial(id, mime, bytes, total)
-                        if (now - lastUi >= 1000) { lastUi = now; setForeground(foreground(track.title, bytes, total)) }
-                    }
+                    dao.setPartial(id, ident, bytes, total)
+                    if (now - lastUi >= 1000) { lastUi = now; setForeground(foreground(track.title, bytes, total)) }
                 }
             }
-            val ext = if (res.mime.contains("mp4")) "m4a" else "webm"
-            val tagged = if (ext == "m4a") tag(id, part, track.title, track.artist, track.album, track.thumbnail) else part
-            val name = DownloadStorage.safeName(track.artist, track.title, ext)
-            val uri = storage.publish(tagged, name, res.mime, settings.settings.value.downloadTree)
-            part.delete()
-            dao.done(id, uri, res.size, res.mime, System.currentTimeMillis())
-            finished++
-            DebugLog.d("download", "$id saved ($ext, ${res.size / 1024} KB)")
+            // Past this point the bytes are complete: finish tagging, publishing and the DB commit even if
+            // the user pauses now. Cancelling halfway would leave a file nobody tracks.
+            withContext(NonCancellable) { finish(id, track, part, res) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: StreamError) {
@@ -108,6 +104,20 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             DebugLog.e("download", "$id failed", e)
             fail(id, e.message ?: e.javaClass.simpleName)
         }
+    }
+
+    private suspend fun finish(id: String, track: app.dkord.core.Track, part: java.io.File, res: TrackDownloader.Result) {
+        val ext = if (res.mime.contains("mp4")) "m4a" else "webm"
+        val tagged = if (ext == "m4a") tag(id, part, track.title, track.artist, track.album, track.thumbnail) else part
+        val name = DownloadStorage.safeName(track.artist, track.title, ext)
+        val uri = storage.publish(tagged, name, res.mime, settings.settings.value.downloadTree)
+        part.delete()
+        if (dao.done(id, uri, res.size, res.mime, System.currentTimeMillis()) == 0) {
+            storage.delete(uri) // the user removed the download while it was being saved
+            return
+        }
+        finished++
+        DebugLog.d("download", "$id saved ($ext, ${res.size / 1024} KB)")
     }
 
     private suspend fun fail(id: String, message: String) {

@@ -101,6 +101,7 @@ interface DownloadDao {
     @Query("UPDATE downloads SET state = 'QUEUED', updatedAt = :now WHERE trackId = :id AND state = 'RUNNING'")
     suspend fun requeueIfRunning(id: String, now: Long)
 
+    /** [mime] holds the stream identity ("audio/mp4#140"): a partial is only resumed from the same representation. */
     @Query("UPDATE downloads SET mime = :mime, bytes = :bytes, total = :total WHERE trackId = :id")
     suspend fun setPartial(id: String, mime: String, bytes: Long, total: Long)
 
@@ -111,7 +112,7 @@ interface DownloadDao {
         "UPDATE downloads SET state = 'DONE', localUri = :uri, bytes = :size, total = :size, mime = :mime, " +
             "error = NULL, updatedAt = :now WHERE trackId = :id",
     )
-    suspend fun done(id: String, uri: String, size: Long, mime: String, now: Long)
+    suspend fun done(id: String, uri: String, size: Long, mime: String, now: Long): Int
 
     @Query("UPDATE downloads SET state = 'QUEUED', updatedAt = :now WHERE state = 'RUNNING'")
     suspend fun resetRunning(now: Long)

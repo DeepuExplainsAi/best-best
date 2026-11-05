@@ -68,6 +68,7 @@ class SearchViewModel(private val repo: MusicRepository) : ViewModel() {
     private var cursor: SearchCursor? = null
     private var suggestJob: Job? = null
     private var searchJob: Job? = null
+    private var moreJob: Job? = null
 
     /** Debounced live suggestions while typing. */
     fun typed(text: String) {
@@ -86,11 +87,12 @@ class SearchViewModel(private val repo: MusicRepository) : ViewModel() {
         if (text.isBlank()) return
         query.value = text
         suggestJob?.cancel(); _suggestions.value = emptyList()
-        searchJob?.cancel()
+        searchJob?.cancel(); moreJob?.cancel(); _more.value = false
         _results.value = Load.Loading
         searchJob = viewModelScope.launch {
             _results.value = runCatching { repo.search(text, filter.value) }.fold(
-                { cursor = it.next; Load.Ok(it.items) }, { cursor = null; Load.Failed(it) },
+                { cursor = it.next; Load.Ok(it.items) },
+                { if (it is kotlinx.coroutines.CancellationException) throw it; cursor = null; Load.Failed(it) },
             )
         }
     }
@@ -100,15 +102,15 @@ class SearchViewModel(private val repo: MusicRepository) : ViewModel() {
         val cur = (_results.value as? Load.Ok)?.value ?: return
         if (_more.value) return
         _more.value = true
-        viewModelScope.launch {
+        moreJob = viewModelScope.launch {
             runCatching { repo.searchMore(c) }
                 .onSuccess { cursor = it.next; _results.value = Load.Ok((cur + it.items).distinctBy { i -> i.kind to i.id }) }
-                .onFailure { cursor = null }
+                .onFailure { if (it is kotlinx.coroutines.CancellationException) throw it; cursor = null }
             _more.value = false
         }
     }
 
-    fun clear() { query.value = ""; _results.value = null; _suggestions.value = emptyList(); cursor = null }
+    fun clear() { searchJob?.cancel(); moreJob?.cancel(); suggestJob?.cancel(); _more.value = false; query.value = ""; _results.value = null; _suggestions.value = emptyList(); cursor = null }
 }
 
 @Composable

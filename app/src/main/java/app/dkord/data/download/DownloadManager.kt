@@ -69,10 +69,11 @@ class DownloadManager(
 
     /** Cancels a running/queued download, or deletes a finished one (file included). */
     suspend fun remove(id: String) {
+        // Stop the running job first and wait: a download that is already saving finishes (uncancellable),
+        // so the row read below then holds its final uri and the file gets deleted too.
+        active[id]?.let { it.cancel(); it.join() }
         val row = dao.get(id)
         dao.delete(id)
-        active[id]?.cancel()
-        active[id]?.join()
         storage.partFile(id).delete()
         row?.localUri?.let(storage::delete)
     }

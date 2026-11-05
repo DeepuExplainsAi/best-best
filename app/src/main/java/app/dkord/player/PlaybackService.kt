@@ -59,6 +59,7 @@ class PlaybackService : MediaSessionService() {
 
     private var urlRetryFor: String? = null
     private var consecutiveSkips = 0
+    private var recorded: String? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -179,13 +180,20 @@ class PlaybackService : MediaSessionService() {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             urlRetryFor = null
             saveQueueSoon()
-            mediaItem?.let { scope.launch { runCatching { library.recordPlayed(it.toTrack()) } } }
+            recorded = null
         }
 
         override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) = saveQueueSoon()
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
-            if (isPlaying) consecutiveSkips = 0 else saveQueueSoon()
+            if (isPlaying) {
+                consecutiveSkips = 0
+                // Only a track that really started counts as played (not a restored or failing queue entry).
+                player.currentMediaItem?.takeIf { it.mediaId != recorded }?.let { item ->
+                    recorded = item.mediaId
+                    scope.launch { runCatching { library.recordPlayed(item.toTrack()) } }
+                }
+            } else saveQueueSoon()
         }
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
