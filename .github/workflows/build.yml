@@ -1,0 +1,23 @@
+name: Build debug APK
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v6
+      - run: chmod +x gradlew
+      - run: ./gradlew assembleDebug --stacktrace
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dkord-debug-apk
+          path: app/build/outputs/apk/debug/*.apk

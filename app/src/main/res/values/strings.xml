@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Dkord</string>
+    <string name="tab_home">Home</string>
+    <string name="tab_search">Search</string>
+    <string name="tab_library">Library</string>
+    <string name="tab_downloads">Downloads</string>
+    <string name="placeholder_part1">Project skeleton is ready. Features arrive in the next parts.</string>
+</resources>
