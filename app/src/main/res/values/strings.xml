@@ -6,4 +6,13 @@
     <string name="tab_library">Library</string>
     <string name="tab_downloads">Downloads</string>
     <string name="placeholder_part1">Project skeleton is ready. Features arrive in the next parts.</string>
+    <string name="channel_playback">Playback</string>
+    <string name="err_bot_check">YouTube wants to confirm you\'re not a bot. Try again later, or sign in under Library.</string>
+    <string name="err_age_restricted">This track is age-restricted. Sign in with an adult account to play it.</string>
+    <string name="err_kids">This track is restricted (made for kids).</string>
+    <string name="err_geo">This track isn\'t available in your country.</string>
+    <string name="err_private">This track is private.</string>
+    <string name="err_unavailable">This track is unavailable.</string>
+    <string name="err_network">No connection. Check your internet and try again.</string>
+    <string name="err_no_audio">No playable audio was found for this track.</string>
 </resources>

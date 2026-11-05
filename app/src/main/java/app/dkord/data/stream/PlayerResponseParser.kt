@@ -20,7 +20,7 @@ object PlayerResponseParser {
             AudioCandidate(
                 url = url,
                 mimeType = mime,
-                bitrate = (f.at("averageBitrate") as? JsonPrimitive)?.intOrNull ?: (f.at("bitrate") as? JsonPrimitive)?.intOrNull ?: 0,
+                bitrate = (f.at("bitrate") as? JsonPrimitive)?.intOrNull ?: (f.at("averageBitrate") as? JsonPrimitive)?.intOrNull ?: 0, // nominal first: same field NewPipe reports, so every resolver picks the same itag
                 contentLength = (f.at("contentLength") as? JsonPrimitive)?.content?.toLongOrNull(),
                 isOriginalTrack = f.at("audioTrack", "audioIsDefault").let { it == null || (it as? JsonPrimitive)?.content == "true" },
             )

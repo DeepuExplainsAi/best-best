@@ -1,6 +1,9 @@
 package app.dkord
 
+import android.Manifest
+import android.os.Build
 import android.os.Bundle
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -30,6 +33,11 @@ import app.dkord.data.auth.AuthStore
 import app.dkord.data.stream.StreamResolver
 import app.dkord.data.yt.MusicRepository
 import app.dkord.data.yt.SearchFilter
+import app.dkord.player.PlaybackEvents
+import app.dkord.player.PlayerController
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.OutlinedButton
 import app.dkord.ui.LoginScreen
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
@@ -38,10 +46,16 @@ class MainActivity : ComponentActivity() {
     private val repo: MusicRepository by inject()
     private val resolver: StreamResolver by inject()
     private val auth: AuthStore by inject()
+    private val player: PlayerController by inject()
+
+    private val notifPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        player.connect()
+        // Android 13+: without this the media notification and lock-screen controls are hidden.
+        if (Build.VERSION.SDK_INT >= 33) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         setContent { MaterialTheme { Part2Harness() } }
     }
 
@@ -55,6 +69,9 @@ class MainActivity : ComponentActivity() {
         var login by rememberSaveable { mutableStateOf(false) }
         val loggedIn by auth.loggedIn.collectAsState()
         val log by DebugLog.entries.collectAsState()
+        val ps by player.state.collectAsState()
+        val sleep by player.sleep.collectAsState()
+        LaunchedEffect(Unit) { PlaybackEvents.failures.collect { status = "Can't play ${it.title}: ${it.problem} ${it.detail.orEmpty()}" } }
 
         if (login) { LoginScreen(onDone = { login = false; status = if (it) "Signed in" else "Login cancelled" }); return }
 
@@ -87,6 +104,19 @@ class MainActivity : ComponentActivity() {
                         .onFailure { status = "Liked failed: ${it.message}" }
                 }
             }, enabled = loggedIn) { Text("Load liked songs") }
+            Row {
+                Button(onClick = { if (results.isNotEmpty()) player.play(results.mapNotNull { it.track }, 0) }) { Text("Play all") }
+                OutlinedButton(onClick = player::togglePlay) { Text(if (ps.isPlaying) "Pause" else "Play") }
+                OutlinedButton(onClick = player::previous) { Text("Prev") }
+                OutlinedButton(onClick = player::next) { Text("Next") }
+            }
+            Row {
+                OutlinedButton(onClick = player::toggleShuffle) { Text(if (ps.shuffle) "Shuffle ON" else "Shuffle") }
+                OutlinedButton(onClick = player::cycleRepeat) { Text("Repeat ${ps.repeatMode}") }
+                OutlinedButton(onClick = { player.setSpeed(if (ps.speed >= 2f) 0.75f else ps.speed + 0.25f) }) { Text("${ps.speed}x") }
+                OutlinedButton(onClick = { player.sleepIn(1) }) { Text("Sleep 1m") }
+            }
+            Text("Now: ${ps.current?.title ?: "-"}  ${ps.positionMs / 1000}/${ps.durationMs / 1000}s  sleep=$sleep")
             Text(status)
             LazyColumn(Modifier.weight(1f)) {
                 items(results) { Text("${it.title} - ${it.subtitle}", Modifier.padding(vertical = 4.dp)) }
