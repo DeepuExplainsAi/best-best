@@ -19,7 +19,8 @@ AGP 9.5.0, Kotlin 2.4.21, KSP 2.3.13, Compose BOM 2026.09.00, Media3 1.11.1, New
 - [x] Part 2: StreamResolver, search, login + auth. CI green (13 unit tests + APK). Pushed.
 - [x] Part 3: player service. CI green (20 unit tests + APK). Pushed.
 - [x] Part 4: downloads, Room, playlists. CI green (tests + APK). Pushed.
-- [ ] Part 5: UI, settings, translations, polish
+- [x] Part 5: UI, settings, lyrics, debug log, Hindi, README. CI green. Pushed. Independent review done; its fixes applied.
+- [ ] NEXT (optional polish, see list at bottom)
 
 ## Test after Part 1
 Actions tab: "Build debug APK" is green and artifact `dkord-debug-apk` installs and shows a placeholder text.
@@ -81,3 +82,27 @@ Download notification, pause/resume mid-file, kill app during download then resu
 
 ## Test after Part 4
 UI for this arrives in Part 5, so test then: download 2 songs, pause one, kill app, reopen -> resumes; airplane mode -> downloaded song plays; check file in Music/Dkord has title+cover in another player.
+
+## Part 5 summary (what exists, `ui/`)
+- `App.kt`: bottom nav (Home/Search/Library/Downloads) + pushed `Dest` stack saved as JSON (`Nav.kt`, survives rotation/process death), mini player, full player slide-over, snackbar for playback failures (maps `PlaybackProblem` to strings), BackHandlers (predictive back enabled in manifest). `MainActivity` only sets theme + `App()`.
+- `screens/`: Home (chips, shelves, pull-to-refresh, reloads on login change), Search (debounced suggestions, filters, paging), Detail (album/artist/playlist/mood, play/shuffle/download), Library (liked, recent, local playlists, import/export JSON via SAF, account library shelves, sign-in), LocalLists (liked, recent, playlist with rename/delete/move up-down/remove), Downloads (queue with progress, pause/resume/cancel, finished list), Settings (quality, theme incl. AMOLED, dynamic color, download folder SAF, cache size/clear, sign in/out, update extractor, report broken, debug log), DebugLogScreen.
+- `player/PlayerUi.kt`: MiniPlayer (swipe sideways = next/prev, swipe up = open), FullPlayer (blurred art background, swipe down closes, swipe art = next/prev, seek bar, lyrics panel with LRCLIB synced lyrics tap-to-seek, queue panel with remove/jump, speed, sleep timer, like).
+- `theme/Theme.kt`: YouTube-Music-like dark/red; light; AMOLED; Material You optional.
+- `common/Actions` (single place for like/download/playlist actions), `Components.kt` (rows, cards, TrackMenu, PlaylistPicker, dialogs).
+- `data/lyrics/Lyrics.kt`: LRCLIB client + LRC parser (not unit-tested yet).
+- Strings: English default + Hindi (`values-hi`). `locales_config.xml` lists only en, hi.
+- Review fixes applied: download pause/remove race (lazy job + recheck), finish() uncancellable + conditional DB commit, resume identity = mime#itag (stored in downloads.mime column), Content-Range start check, OkHttp call cancelled with coroutine, history recorded only when a track really plays, mood ViewModel key includes params, search job cancellation, SAF IO on Dispatchers.IO.
+
+## NOT verified on a device (everything UI)
+Nothing in Part 5 has been run on a phone (sandbox has no emulator). First thing a human/AI with a device should do: install CI artifact `dkord-debug-apk`, then run the checklist below and fix what breaks.
+
+## Test after Part 5 (phone)
+1. Home loads shelves; pull to refresh; chips filter. 2. Search "arijit": suggestions while typing, tap result plays; filters Albums/Artists open a detail page. 3. Mini player: tap opens full player; swipe down closes; swipe art/mini sideways changes track; seek works; lyrics tab shows synced lines; queue tab jumps/removes; speed + sleep timer. 4. Rotate during playback and during a pushed screen: nothing resets. Kill app from recents with music paused, reopen: queue restored. 5. Song menu -> Download: Downloads tab shows progress, pause/resume, kill app mid-download and reopen: continues; finished file plays in airplane mode; file in Android/data/app.dkord/files/Music/Dkord has tags. 6. Library: create playlist, add songs from menu, reorder, rename, delete; export JSON then import it back. 7. Settings: theme AMOLED/light, dynamic color, quality, clear cache, download folder picker; Debug log shows lines; Report broken copies log and opens GitHub. 8. Sign in with SECONDARY account: Library shows your playlists, Home becomes personalised, Settings shows your name; Sign out clears.
+
+## Known gaps / ideas (not done)
+- Queue reorder in UI (controller has `moveInQueue`; the panel only offers jump/remove). Drag-to-reorder for local playlists (uses up/down buttons).
+- Only en + hi strings; other languages in locales_config were removed until translated.
+- No unit tests for LRC parser, Room DAOs, UI. Release build (minify) never built/tested: R8 rules may need additions (check `assembleRelease` in CI).
+- Audio cache size change applies on next app start. AMOLED uses pure black surfaces only for background/surface.
+- Logged-in parsing (liked songs/library/account name) unverified; SAPISIDHASH acceptance unverified.
+- Sign-in does not yet pass cookies to stream resolvers (bot-check videos may still fail even when logged in).
