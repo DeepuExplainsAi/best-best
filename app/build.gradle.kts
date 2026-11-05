@@ -78,4 +78,7 @@ dependencies {
     implementation(libs.security.crypto)
     implementation(libs.coroutines.android)
     implementation(libs.serialization.json)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.coroutines.test)
 }
