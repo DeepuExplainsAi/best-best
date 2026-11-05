@@ -43,7 +43,7 @@ object Mp4Tagger {
 
             val newMoov = box("moov", body.array())
             val delta = newMoov.size - moov.size
-            if (delta != 0L) shiftChunkOffsets(newMoov, 8, newMoov.size, moovEnd = moov.start + moov.size, delta = delta)
+            if (delta != 0L) shiftChunkOffsets(newMoov, 8, newMoov.size.toLong(), moovEnd = moov.start + moov.size, delta = delta)
 
             dst.outputStream().buffered().use { out ->
                 copy(raf, 0, moov.start, out)
