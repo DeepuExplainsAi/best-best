@@ -14,6 +14,7 @@ import app.dkord.core.DebugLog
 import app.dkord.data.db.AppDatabase
 import app.dkord.data.db.DownloadState
 import app.dkord.data.db.DownloadWithTrack
+import app.dkord.data.db.toTrack
 import app.dkord.data.settings.SettingsRepository
 import app.dkord.data.stream.StreamError
 import app.dkord.data.stream.StreamModule
@@ -95,7 +96,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWork
             }
             // Past this point the bytes are complete: finish tagging, publishing and the DB commit even if
             // the user pauses now. Cancelling halfway would leave a file nobody tracks.
-            withContext(NonCancellable) { finish(id, track, part, res) }
+            withContext(NonCancellable) { finish(id, track.toTrack(), part, res) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: StreamError) {
