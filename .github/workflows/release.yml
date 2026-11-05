@@ -1,0 +1,37 @@
+name: Release APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v0.1.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v6
+      - run: chmod +x gradlew
+      - run: ./gradlew assembleDebug --stacktrace
+      - name: Create release with APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          cp app/build/outputs/apk/debug/*.apk "Dkord-${TAG}.apk"
+          gh release create "$TAG" "Dkord-${TAG}.apk" \
+            --title "Dkord ${TAG}" \
+            --notes "Dkord ${TAG}: free, open-source YouTube Music client for Android. Download Dkord-${TAG}.apk below and install it on your phone (allow 'Install unknown apps' if Android asks)." \
+            --target "${GITHUB_SHA}"
