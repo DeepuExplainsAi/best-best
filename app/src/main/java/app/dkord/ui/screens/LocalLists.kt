@@ -12,7 +12,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Shuffle
@@ -38,6 +37,7 @@ import app.dkord.R
 import app.dkord.core.Track
 import app.dkord.ui.common.Actions
 import app.dkord.ui.common.ConfirmDialog
+import app.dkord.ui.common.ExportJsonButton
 import app.dkord.ui.common.EmptyState
 import app.dkord.ui.common.TextInputDialog
 import app.dkord.ui.common.TrackRow
@@ -63,7 +63,7 @@ private fun TrackListScaffold(
         TopAppBar(
             title = { Text(title, maxLines = 1) },
             navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
-            actions = { actions() },
+            actions = { ExportJsonButton(title) { a.library.exportTracksJson(title, tracks) }; actions() },
         )
     }) { pad ->
         if (tracks.isEmpty()) { EmptyState(emptyText, Modifier.padding(pad)); return@Scaffold }
@@ -72,7 +72,6 @@ private fun TrackListScaffold(
                 Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button({ a.player.setShuffle(false); onPlay(tracks, 0) }) { Icon(Icons.Default.PlayArrow, null); Text(stringResource(R.string.play)) }
                     OutlinedButton({ a.player.setShuffle(true); onPlay(tracks.shuffled(), 0) }) { Icon(Icons.Default.Shuffle, null); Text(stringResource(R.string.shuffle)) }
-                    OutlinedButton({ a.download(tracks) }) { Icon(Icons.Default.Download, stringResource(R.string.download)) }
                 }
             }
             itemsIndexed(tracks, key = { i, t -> "$i${t.id}" }) { i, t ->

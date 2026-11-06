@@ -12,7 +12,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,6 +40,7 @@ import app.dkord.core.Page
 import app.dkord.core.Track
 import app.dkord.data.yt.MusicRepository
 import app.dkord.ui.common.Actions
+import app.dkord.ui.common.ExportJsonButton
 import app.dkord.ui.common.Cover
 import app.dkord.ui.common.ErrorBox
 import app.dkord.ui.common.Load
@@ -112,6 +112,10 @@ fun DetailScreen(
             TopAppBar(
                 title = { Text(item.title, maxLines = 1) },
                 navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
+                actions = {
+                    val tracks = (page as? Load.Ok)?.value?.tracks.orEmpty()
+                    if (tracks.isNotEmpty()) ExportJsonButton(item.title) { actions.library.exportTracksJson(item.title, tracks) }
+                },
             )
         },
     ) { pad ->
@@ -130,7 +134,6 @@ fun DetailScreen(
                                 if (tracks.isNotEmpty()) Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Button({ actions.player.setShuffle(false); onPlay(tracks, 0) }) { Icon(Icons.Default.PlayArrow, null); Text(stringResource(R.string.play)) }
                                     OutlinedButton({ actions.player.setShuffle(true); onPlay(tracks.shuffled(), 0) }) { Icon(Icons.Default.Shuffle, null); Text(stringResource(R.string.shuffle)) }
-                                    OutlinedButton({ actions.download(tracks) }) { Icon(Icons.Default.Download, stringResource(R.string.download)) }
                                 }
                             }
                         }

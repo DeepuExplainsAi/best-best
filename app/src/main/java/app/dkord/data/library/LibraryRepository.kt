@@ -102,6 +102,9 @@ class LibraryRepository(private val db: AppDatabase) {
         return PlaylistJson.encode(LibraryDoc(playlists = docs, liked = liked))
     }
 
+    fun exportTracksJson(name: String, tracks: List<Track>): String =
+        PlaylistJson.encode(LibraryDoc(playlists = listOf(PlaylistDoc(name, tracks))))
+
     /** Imports every playlist as a new playlist and merges liked songs. Returns playlists created. */
     suspend fun importJson(text: String): Int {
         val doc = PlaylistJson.decode(text)

@@ -138,4 +138,6 @@
     <string name="use_secondary">Tip: use a secondary Google account</string>
     <string name="waiting">Waiting</string>
     <string name="youtube_music">YouTube Music</string>
+    <string name="app_title" translatable="false">Dkord by DeepuGupta</string>
+    <string name="export_playlist_json">Download playlist (JSON)</string>
 </resources>

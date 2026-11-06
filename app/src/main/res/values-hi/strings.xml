@@ -88,4 +88,5 @@
         <item quantity="one">%d गाना</item>
         <item quantity="other">%d गाने</item>
     </plurals>
+    <string name="export_playlist_json">प्लेलिस्ट डाउनलोड करें (JSON)</string>
 </resources>
