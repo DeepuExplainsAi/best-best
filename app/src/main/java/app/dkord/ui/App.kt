@@ -87,13 +87,6 @@ fun App() {
     fun pop() { stack = stack.dropLast(1) }
     fun play(list: List<Track>, i: Int) = player.play(list, i)
 
-    // Fetch the account name once after sign-in so Settings can show who is signed in.
-    val auth: app.dkord.data.auth.AuthStore = koinInject()
-    val repo: app.dkord.data.yt.MusicRepository = koinInject()
-    val loggedIn by auth.loggedIn.collectAsState()
-    LaunchedEffect(loggedIn) {
-        if (loggedIn && auth.accountName == null) runCatching { repo.account() }.getOrNull()?.let { (n, p) -> auth.accountName = n; auth.accountPhoto = p }
-    }
 
     // Playback failures -> localized message (the service cannot reach the UI directly).
     val msgs = mapOf(
@@ -146,10 +139,9 @@ fun App() {
                     is Dest.Playlist -> LocalPlaylistScreen(dest.id, ::pop, ::play) { menuTrack = it }
                     Dest.Liked -> LikedScreen(::pop, ::play) { menuTrack = it }
                     Dest.Recent -> RecentScreen(::pop, ::play) { menuTrack = it }
-                    Dest.Settings -> SettingsScreen(::pop, { push(Dest.Logs) }, { push(Dest.Login) }, ::say)
+                    Dest.Settings -> SettingsScreen(::pop, { push(Dest.Logs) }, ::say)
                     Dest.Logs -> DebugLogScreen(::pop, ::say)
                     is Dest.Video -> VideoScreen(dest.id, dest.title, ::pop)
-                    Dest.Login -> LoginScreen(onDone = { ok -> pop(); if (ok) say(MSG_SIGNED_IN) })
                 }
             }
         }
@@ -165,8 +157,6 @@ fun App() {
     menuTrack?.let { t -> TrackMenu(t, onDismiss = { menuTrack = null }, onAddToPlaylist = { pickTracks = listOf(it) }) }
     pickTracks?.let { PlaylistPicker(it, onDismiss = { pickTracks = null }, onResult = ::say) }
 }
-
-private const val MSG_SIGNED_IN = "✓"
 
 private data class TabSpec(val tab: Tab, val icon: androidx.compose.ui.graphics.vector.ImageVector, val label: Int)
 private val tabs = listOf(
@@ -200,7 +190,7 @@ private fun TabContent(
         when (tab) {
             Tab.HOME -> HomeScreen(onItem, m)
             Tab.SEARCH -> SearchScreen(onItem, onPlay, onMenu, m)
-            Tab.LIBRARY -> LibraryScreen({ push(Dest.Playlist(it)) }, { push(Dest.Liked) }, { push(Dest.Recent) }, onItem, { push(Dest.Login) }, say, m)
+            Tab.LIBRARY -> LibraryScreen({ push(Dest.Playlist(it)) }, { push(Dest.Liked) }, { push(Dest.Recent) }, onItem, say, m)
             Tab.DOWNLOADS -> DownloadsScreen(onPlay, onMenu, m)
         }
     }

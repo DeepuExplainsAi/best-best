@@ -46,7 +46,6 @@ import androidx.lifecycle.viewModelScope
 import app.dkord.R
 import app.dkord.core.BrowseItem
 import app.dkord.core.Page
-import app.dkord.data.auth.AuthStore
 import app.dkord.data.library.LibraryRepository
 import app.dkord.data.yt.MusicRepository
 import app.dkord.ui.common.Actions
@@ -65,51 +64,21 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
-/** Library of the signed-in YouTube Music account: playlists, albums, artists. */
-class AccountLibraryViewModel(private val repo: MusicRepository) : ViewModel() {
-    private val _state = MutableStateFlow<Load<Page>?>(null)
-    val state: StateFlow<Load<Page>?> = _state
-
-    fun load() {
-        _state.value = Load.Loading
-        viewModelScope.launch {
-            _state.value = runCatching {
-                val playlists = repo.libraryPlaylists()
-                // Albums and artists are secondary: their failure must not hide the playlists.
-                val albums = runCatching { repo.libraryAlbums() }.getOrNull()
-                val artists = runCatching { repo.libraryArtists() }.getOrNull()
-                val shelves = playlists.shelves + listOfNotNull(
-                    albums?.shelves?.firstOrNull()?.copy(title = "Albums"),
-                    artists?.shelves?.firstOrNull()?.copy(title = "Artists"),
-                )
-                playlists.copy(shelves = shelves.filter { it.items.isNotEmpty() })
-            }.fold({ Load.Ok(it) }, { Load.Failed(it) })
-        }
-    }
-}
-
 @Composable
 fun LibraryScreen(
     onOpenLocalPlaylist: (Long) -> Unit,
     onOpenLiked: () -> Unit,
     onOpenRecent: () -> Unit,
     onItem: (BrowseItem) -> Unit,
-    onLogin: () -> Unit,
     onMessage: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val actions: Actions = koinInject()
-    val auth: AuthStore = koinInject()
-    val repo: MusicRepository = koinInject()
     val library = actions.library
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val playlists by remember { library.playlists() }.collectAsState(emptyList())
-    val loggedIn by auth.loggedIn.collectAsState()
-    val vm = koinVm { AccountLibraryViewModel(repo) }
-    val remote by vm.state.collectAsState()
     var creating by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(loggedIn) { if (loggedIn) vm.load() }
 
     val importMsg = stringResource(R.string.imported_n)
     val importFail = stringResource(R.string.import_failed)
@@ -164,16 +133,7 @@ fun LibraryScreen(
         if (playlists.isEmpty()) item("noplaylists") { Text(stringResource(R.string.no_playlists), Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
 
         item("account") { SectionTitle(stringResource(R.string.youtube_music)) }
-        if (!loggedIn) item("login") {
-            Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.login_explain), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Button(onLogin) { Icon(Icons.Default.Login, null); Text(stringResource(R.string.sign_in), Modifier.padding(start = 8.dp)) }
-            }
-        } else when (val r = remote) {
-            null, Load.Loading -> item("l") { Loading(Modifier.padding(32.dp)) }
-            is Load.Failed -> item("e") { ErrorBox(r.error, vm::load, Modifier.padding(16.dp)) }
-            is Load.Ok -> items(r.value.shelves) { ShelfRow(it, onItem) }
-        }
+        item("login") { Text(stringResource(R.string.login_unsupported), Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 

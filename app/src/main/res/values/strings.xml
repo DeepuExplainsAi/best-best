@@ -145,4 +145,6 @@
     <string name="video_none">No playable video stream was found for this track. Audio still works.</string>
     <string name="video_restricted">Video is blocked or restricted for this track.</string>
     <string name="video_failed">The video could not be played.</string>
+    <string name="login_unsupported">Google sign-in is not available. YouTube Music\'s library needs web cookies, which Google\'s official sign-in does not provide, and Dkord will not scrape them from a browser. Playback, search, downloads and local playlists work without an account.</string>
+    <string name="login_unsupported_short">Not available (see Library)</string>
 </resources>

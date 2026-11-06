@@ -76,7 +76,7 @@ class InnerTubeClient(
         const val CLIENT_NAME = "WEB_REMIX"
         /** Verified live on 2026-11-05. Older versions keep working for a long time; bump if browse breaks. */
         const val CLIENT_VERSION = "1.20260121.03.00"
-        /** Desktop Chrome UA: Google blocks sign-in inside UAs that identify as a WebView. */
+        /** User agent for anonymous InnerTube web requests. Not a sign-in workaround. */
         const val WEB_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
     }
 }

@@ -41,7 +41,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import app.dkord.R
-import app.dkord.data.auth.AuthStore
 import app.dkord.data.download.DownloadStorage
 import app.dkord.data.settings.SettingsRepository
 import app.dkord.data.settings.ThemeMode
@@ -57,14 +56,12 @@ import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onLogs: () -> Unit, onLogin: () -> Unit, onMessage: (String) -> Unit) {
+fun SettingsScreen(onBack: () -> Unit, onLogs: () -> Unit, onMessage: (String) -> Unit) {
     val repo: SettingsRepository = koinInject()
-    val auth: AuthStore = koinInject()
     val cache: AudioCache = koinInject()
     val streams: StreamModule = koinInject()
     val storage: DownloadStorage = koinInject()
     val s by repo.settings.collectAsState()
-    val loggedIn by auth.loggedIn.collectAsState()
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var dialog by rememberSaveable { mutableStateOf("") }
@@ -111,10 +108,7 @@ fun SettingsScreen(onBack: () -> Unit, onLogs: () -> Unit, onLogin: () -> Unit, 
             }
 
             SectionTitle(stringResource(R.string.account))
-            Item(
-                stringResource(if (loggedIn) R.string.sign_out else R.string.sign_in),
-                if (loggedIn) auth.accountName ?: stringResource(R.string.signed_in) else stringResource(R.string.use_secondary),
-            ) { if (loggedIn) dialog = "logout" else onLogin() }
+            Item(stringResource(R.string.sign_in), stringResource(R.string.login_unsupported_short)) { onMessage(ctx.getString(R.string.login_unsupported)) }
 
             SectionTitle(stringResource(R.string.troubleshooting))
             Item(stringResource(R.string.update_extractor), latest?.let { stringResource(R.string.extractor_versions, ExtractorHealth.BUNDLED_VERSION, it) } ?: stringResource(R.string.extractor_bundled, ExtractorHealth.BUNDLED_VERSION)) {
@@ -151,7 +145,6 @@ fun SettingsScreen(onBack: () -> Unit, onLogs: () -> Unit, onLogin: () -> Unit, 
             confirmButton = { TextButton({ dialog = ""; pickFolder.launch(null) }) { Text(stringResource(R.string.choose_folder)) } },
             dismissButton = { TextButton({ dialog = ""; repo.setDownloadTree(null) }) { Text(stringResource(R.string.use_default)) } },
         )
-        "logout" -> ConfirmDialog(stringResource(R.string.sign_out), stringResource(R.string.sign_out_text), stringResource(R.string.sign_out), { dialog = "" }) { dialog = ""; auth.logout() }
         "update" -> AlertDialog(
             onDismissRequest = { dialog = "" },
             title = { Text(stringResource(R.string.update_extractor)) },

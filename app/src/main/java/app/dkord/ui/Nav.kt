@@ -18,7 +18,6 @@ sealed interface Dest {
     @Serializable data object Recent : Dest
     @Serializable data object Settings : Dest
     @Serializable data object Logs : Dest
-    @Serializable data object Login : Dest
     @Serializable data class Video(val id: String, val title: String) : Dest
 }
 

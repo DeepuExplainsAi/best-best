@@ -26,7 +26,6 @@ import app.dkord.core.BrowseItem
 import app.dkord.core.Chip
 import app.dkord.core.Page
 import app.dkord.core.Shelf
-import app.dkord.data.auth.AuthStore
 import app.dkord.data.yt.MusicRepository
 import app.dkord.ui.common.ErrorBox
 import app.dkord.ui.common.Load
@@ -38,26 +37,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
-class HomeViewModel(private val repo: MusicRepository, private val auth: AuthStore) : ViewModel() {
+class HomeViewModel(private val repo: MusicRepository) : ViewModel() {
     private val _page = MutableStateFlow<Load<Page>>(Load.Loading)
     val page: StateFlow<Load<Page>> = _page
     private val _refreshing = MutableStateFlow(false)
     val refreshing: StateFlow<Boolean> = _refreshing
     private val _chip = MutableStateFlow<Chip?>(null)
     val chip: StateFlow<Chip?> = _chip
-    private var wasLoggedIn = auth.loggedIn.value
 
     init { load() }
 
     fun select(c: Chip?) { _chip.value = if (_chip.value == c) null else c; load() }
 
-    /** Reloads when the signed-in state changed since the last load (personalised home). */
-    fun reloadIfAccountChanged() {
-        if (auth.loggedIn.value != wasLoggedIn) { _chip.value = null; load() }
-    }
-
     fun load(refresh: Boolean = false) {
-        wasLoggedIn = auth.loggedIn.value
         if (refresh) _refreshing.value = true else _page.value = Load.Loading
         viewModelScope.launch {
             _page.value = runCatching { repo.home(_chip.value) }.fold({ Load.Ok(it) }, { Load.Failed(it) })
@@ -70,13 +62,10 @@ class HomeViewModel(private val repo: MusicRepository, private val auth: AuthSto
 @Composable
 fun HomeScreen(onItem: (BrowseItem) -> Unit, modifier: Modifier = Modifier) {
     val repo: MusicRepository = koinInject()
-    val auth: AuthStore = koinInject()
-    val vm = koinVm { HomeViewModel(repo, auth) }
+    val vm = koinVm { HomeViewModel(repo) }
     val page by vm.page.collectAsState()
     val refreshing by vm.refreshing.collectAsState()
     val selected by vm.chip.collectAsState()
-    val loggedIn by auth.loggedIn.collectAsState()
-    LaunchedEffect(loggedIn) { vm.reloadIfAccountChanged() }
 
     PullToRefreshBox(refreshing, { vm.load(refresh = true) }, modifier.fillMaxSize()) {
         when (val p = page) {

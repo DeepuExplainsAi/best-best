@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import app.dkord.data.auth.AuthStore
 import app.dkord.data.yt.InnerTubeClient
 import java.io.IOException
 
@@ -29,5 +28,3 @@ fun Throwable.uiError(): UiError = when {
     else -> UiError.GENERIC
 }
 
-/** Used by screens to show account state without each one touching [AuthStore] internals. */
-val AuthStore.displayName: String? get() = accountName

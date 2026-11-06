@@ -94,4 +94,6 @@
     <string name="video_none">इस ट्रैक के लिए कोई चलने योग्य वीडियो नहीं मिला। ऑडियो चलता रहेगा।</string>
     <string name="video_restricted">इस ट्रैक का वीडियो ब्लॉक या प्रतिबंधित है।</string>
     <string name="video_failed">वीडियो नहीं चल सका।</string>
+    <string name="login_unsupported">Google साइन-इन उपलब्ध नहीं है। YouTube Music की लाइब्रेरी के लिए वेब कुकी चाहिए, जो Google का आधिकारिक साइन-इन नहीं देता, और Dkord ब्राउज़र से कुकी नहीं निकालेगा। प्लेबैक, खोज, डाउनलोड और लोकल प्लेलिस्ट बिना अकाउंट के चलते हैं।</string>
+    <string name="login_unsupported_short">उपलब्ध नहीं (लाइब्रेरी देखें)</string>
 </resources>
