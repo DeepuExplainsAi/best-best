@@ -94,6 +94,13 @@
     <string name="video_none">इस ट्रैक के लिए कोई चलने योग्य वीडियो नहीं मिला। ऑडियो चलता रहेगा।</string>
     <string name="video_restricted">इस ट्रैक का वीडियो ब्लॉक या प्रतिबंधित है।</string>
     <string name="video_failed">वीडियो नहीं चल सका।</string>
-    <string name="login_unsupported">Google साइन-इन उपलब्ध नहीं है। YouTube Music की लाइब्रेरी के लिए वेब कुकी चाहिए, जो Google का आधिकारिक साइन-इन नहीं देता, और Dkord ब्राउज़र से कुकी नहीं निकालेगा। प्लेबैक, खोज, डाउनलोड और लोकल प्लेलिस्ट बिना अकाउंट के चलते हैं।</string>
-    <string name="login_unsupported_short">उपलब्ध नहीं (लाइब्रेरी देखें)</string>
+    <string name="download_started">डाउनलोड शुरू। फ़ाइल Music/Dkord में दिखेगी।</string>
+    <string name="app_update">ऐप अपडेट</string>
+    <string name="app_version">वर्शन %s</string>
+    <string name="update_checking">जाँच हो रही है…</string>
+    <string name="update_none">आपके पास नवीनतम वर्शन है</string>
+    <string name="update_available">वर्शन %s उपलब्ध है। यह मौजूदा ऐप के ऊपर इंस्टॉल होगा; आपकी प्लेलिस्ट, लाइक और डाउनलोड सुरक्षित रहेंगे।</string>
+    <string name="update_install">अभी अपडेट करें</string>
+    <string name="update_downloading">अपडेट डाउनलोड हो रहा है…</string>
+    <string name="update_failed">अपडेट विफल। इंटरनेट जाँचें।</string>
 </resources>

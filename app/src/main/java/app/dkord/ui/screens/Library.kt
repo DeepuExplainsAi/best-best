@@ -132,8 +132,6 @@ fun LibraryScreen(
         }
         if (playlists.isEmpty()) item("noplaylists") { Text(stringResource(R.string.no_playlists), Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
 
-        item("account") { SectionTitle(stringResource(R.string.youtube_music)) }
-        item("login") { Text(stringResource(R.string.login_unsupported), Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 

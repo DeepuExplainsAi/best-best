@@ -13,12 +13,21 @@ android {
         applicationId = "app.dkord"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 3
+        versionName = "0.3.0"
+    }
+
+    // One stable key for every build, so a new APK installs over the old one and keeps user data.
+    val keystore = System.getenv("DKORD_KEYSTORE")
+    if (keystore != null) signingConfigs.create("dkord") {
+        storeFile = file(keystore); storeType = "pkcs12"
+        storePassword = System.getenv("DKORD_KEYSTORE_PASS"); keyAlias = "dkord"; keyPassword = System.getenv("DKORD_KEYSTORE_PASS")
     }
 
     buildTypes {
+        debug { signingConfigs.findByName("dkord")?.let { signingConfig = it } }
         release {
+            signingConfigs.findByName("dkord")?.let { signingConfig = it }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

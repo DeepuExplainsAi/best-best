@@ -44,4 +44,5 @@ val appModule = module {
     single { PlayerController(androidContext(), get()) }
     single { LyricsRepository() }
     single { Actions(get(), get(), get()) }
+    single { app.dkord.data.update.AppUpdater(androidContext()) }
 }

@@ -24,6 +24,11 @@ jobs:
           java-version: 21
       - uses: gradle/actions/setup-gradle@v6
       - run: chmod +x gradlew
+      - name: Stable signing key
+        env:
+          KS: ${{ secrets.DKORD_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KS" ]; then echo "$KS" | base64 -d > "$RUNNER_TEMP/dkord.p12"; echo "DKORD_KEYSTORE=$RUNNER_TEMP/dkord.p12" >> "$GITHUB_ENV"; echo "DKORD_KEYSTORE_PASS=${{ secrets.DKORD_KEYSTORE_PASS }}" >> "$GITHUB_ENV"; fi
       - run: ./gradlew assembleDebug --stacktrace
       - name: Create release with APK
         env:
