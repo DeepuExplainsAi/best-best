@@ -21,7 +21,7 @@ AGP 9.5.0, Kotlin 2.4.21, KSP 2.3.13, Compose BOM 2026.09.00, Media3 1.11.1, New
 - [x] Part 4: downloads, Room, playlists. CI green (tests + APK). Pushed.
 - [x] Part 5: UI, settings, lyrics, debug log, Hindi, README. CI green. Pushed. Independent review done; its fixes applied.
 - [x] Part 6: branding "Dkord by DeepuGupta" header, remove download buttons (single-song download stays in the 3-dot track menu only), playlist/album "download" = export JSON file (no MP3s). CODE DONE (ExportJsonButton in top bar of Detail + local lists; Download buttons removed; track 3-dot menu keeps Download for single songs). CI result: check `gh run list`.
-- [ ] Part 7: optional video playback (explicit "Play video", subtitles, fullscreen, tests). TODO
+- [x] Part 7 (CI pending): video. `data/stream/VideoResolver` (NewPipe muxed progressive + subtitles, separate from audio chain/cache), `VideoPicker`/`SubtitlePicker` (tested in Part7Test), `ui/player/VideoScreen` (own ExoPlayer + media3-ui PlayerView, pauses audio first, fullscreen=landscape, retry, error states; `Dest.Video`). Entry: "Play video" button in FullPlayer. NOTE: muxed streams on YouTube max ~360p (itag 18); adaptive-only videos show 'no video stream'. Not device-verified.
 - [ ] Part 8: replace WebView Google login with supported OAuth (Custom Tabs + PKCE) or honest disable; README (TLS "Not secure" vs embedded-browser rejection); tests. TODO
 - Source brief for 6-8: user's "Dkord: Video Playback + Secure Google Sign-in" brief (items 1 and 2) + extra asks: header text, no download buttons, playlist download = JSON.
 - Workflow rule from user: after EACH part: update this file, commit, push, update this file again; continue to next part without asking.

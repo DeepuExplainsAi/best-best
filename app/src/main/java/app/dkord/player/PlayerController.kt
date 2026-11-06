@@ -109,6 +109,7 @@ class PlayerController(private val context: Context, private val sleepTimer: Sle
     fun skipTo(index: Int) = withController { it.seekToDefaultPosition(index); it.play() }
 
     fun togglePlay() = withController { if (it.isPlaying) it.pause() else { if (it.playbackState == Player.STATE_IDLE) it.prepare(); it.play() } }
+    fun pause() = withController { it.pause() }
     fun next() = withController { it.seekToNextMediaItem() }
     /** Like every music app: restart the track if it is past 3s, otherwise go to the previous one. */
     fun previous() = withController { if (it.currentPosition > 3_000 || !it.hasPreviousMediaItem()) it.seekTo(0) else it.seekToPreviousMediaItem() }

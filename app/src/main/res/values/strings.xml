@@ -140,4 +140,9 @@
     <string name="youtube_music">YouTube Music</string>
     <string name="app_title" translatable="false">Dkord by DeepuGupta</string>
     <string name="export_playlist_json">Download playlist (JSON)</string>
+    <string name="play_video">Play video</string>
+    <string name="fullscreen">Fullscreen</string>
+    <string name="video_none">No playable video stream was found for this track. Audio still works.</string>
+    <string name="video_restricted">Video is blocked or restricted for this track.</string>
+    <string name="video_failed">The video could not be played.</string>
 </resources>

@@ -89,4 +89,9 @@
         <item quantity="other">%d गाने</item>
     </plurals>
     <string name="export_playlist_json">प्लेलिस्ट डाउनलोड करें (JSON)</string>
+    <string name="play_video">वीडियो चलाएँ</string>
+    <string name="fullscreen">फ़ुलस्क्रीन</string>
+    <string name="video_none">इस ट्रैक के लिए कोई चलने योग्य वीडियो नहीं मिला। ऑडियो चलता रहेगा।</string>
+    <string name="video_restricted">इस ट्रैक का वीडियो ब्लॉक या प्रतिबंधित है।</string>
+    <string name="video_failed">वीडियो नहीं चल सका।</string>
 </resources>

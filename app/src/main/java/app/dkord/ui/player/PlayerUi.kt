@@ -133,7 +133,7 @@ private enum class Panel { ART, LYRICS, QUEUE }
 /** Full-screen player. Swipe down closes; swipe sideways on the art changes track. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FullPlayer(state: PlayerUiState, onClose: () -> Unit, onAddToPlaylist: (Track) -> Unit) {
+fun FullPlayer(state: PlayerUiState, onClose: () -> Unit, onAddToPlaylist: (Track) -> Unit, onPlayVideo: (Track) -> Unit) {
     val actions: Actions = koinInject()
     val controller = actions.player
     val sleep by controller.sleep.collectAsState()
@@ -213,6 +213,7 @@ fun FullPlayer(state: PlayerUiState, onClose: () -> Unit, onAddToPlaylist: (Trac
                     })
                 }
                 TextButton({ onAddToPlaylist(track) }) { Text(stringResource(R.string.add_to_playlist)) }
+                TextButton({ onPlayVideo(track) }) { Text(stringResource(R.string.play_video)) }
             }
         }
     }

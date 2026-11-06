@@ -56,6 +56,7 @@ import app.dkord.ui.player.MiniPlayer
 import app.dkord.ui.screens.DebugLogScreen
 import app.dkord.ui.screens.DetailScreen
 import app.dkord.ui.screens.DownloadsScreen
+import app.dkord.ui.player.VideoScreen
 import app.dkord.ui.screens.HomeScreen
 import app.dkord.ui.screens.LibraryScreen
 import app.dkord.ui.screens.LikedScreen
@@ -147,6 +148,7 @@ fun App() {
                     Dest.Recent -> RecentScreen(::pop, ::play) { menuTrack = it }
                     Dest.Settings -> SettingsScreen(::pop, { push(Dest.Logs) }, { push(Dest.Login) }, ::say)
                     Dest.Logs -> DebugLogScreen(::pop, ::say)
+                    is Dest.Video -> VideoScreen(dest.id, dest.title, ::pop)
                     Dest.Login -> LoginScreen(onDone = { ok -> pop(); if (ok) say(MSG_SIGNED_IN) })
                 }
             }
@@ -157,7 +159,7 @@ fun App() {
             playerOpen && state.current != null,
             enter = slideInVertically(tween(300)) { it } + fadeIn(),
             exit = slideOutVertically(tween(250)) { it } + fadeOut(),
-        ) { FullPlayer(state, onClose = { playerOpen = false }, onAddToPlaylist = { pickTracks = listOf(it) }) }
+        ) { FullPlayer(state, onClose = { playerOpen = false }, onAddToPlaylist = { pickTracks = listOf(it) }, onPlayVideo = { playerOpen = false; push(Dest.Video(it.id, it.title)) }) }
     }
 
     menuTrack?.let { t -> TrackMenu(t, onDismiss = { menuTrack = null }, onAddToPlaylist = { pickTracks = listOf(it) }) }
