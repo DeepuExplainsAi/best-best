@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Bedtime
@@ -138,6 +139,7 @@ private enum class Panel { ART, LYRICS, QUEUE }
 @Composable
 fun FullPlayer(state: PlayerUiState, onClose: () -> Unit, onAddToPlaylist: (Track) -> Unit, onPlayVideo: (Track) -> Unit) {
     val actions: Actions = koinInject()
+    val settingsRepo: app.dkord.data.settings.SettingsRepository = koinInject()
     val controller = actions.player
     val sleep by controller.sleep.collectAsState()
     val likedIds by remember { actions.library.likedIds() }.collectAsState(emptySet())
@@ -205,7 +207,13 @@ fun FullPlayer(state: PlayerUiState, onClose: () -> Unit, onAddToPlaylist: (Trac
                     Icon(if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, stringResource(if (state.isPlaying) R.string.pause else R.string.play), Modifier.size(40.dp))
                 }
                 IconButton(controller::next, Modifier.size(56.dp)) { Icon(Icons.Default.SkipNext, stringResource(R.string.next), Modifier.size(36.dp)) }
-                IconButton(controller::cycleRepeat) {
+                val ctxT = LocalContext.current
+                val repeatNames = listOf(stringResource(R.string.repeat_off), stringResource(R.string.repeat_all), stringResource(R.string.repeat_one))
+                IconButton({
+                    controller.cycleRepeat()
+                    val next = when (state.repeatMode) { Player.REPEAT_MODE_OFF -> 1; Player.REPEAT_MODE_ALL -> 2; else -> 0 }
+                    Toast.makeText(ctxT, repeatNames[next], Toast.LENGTH_SHORT).show()
+                }) {
                     Icon(if (state.repeatMode == Player.REPEAT_MODE_ONE) Icons.Default.RepeatOne else Icons.Default.Repeat, stringResource(R.string.repeat),
                         tint = if (state.repeatMode != Player.REPEAT_MODE_OFF) MaterialTheme.colorScheme.primary else LocalContentColorOrDefault())
                 }
@@ -219,6 +227,11 @@ fun FullPlayer(state: PlayerUiState, onClose: () -> Unit, onAddToPlaylist: (Trac
                         SleepState.EndOfTrack -> stringResource(R.string.end_of_track)
                         is SleepState.Countdown -> formatTime(s.remainingMs)
                     })
+                }
+                val st by settingsRepo.settings.collectAsState()
+                TextButton({ settingsRepo.setAutoplay(!st.autoplay) }) {
+                    Icon(Icons.Default.AutoAwesome, null, tint = if (st.autoplay) MaterialTheme.colorScheme.primary else LocalContentColorOrDefault())
+                    Text("  " + stringResource(R.string.autoplay), color = if (st.autoplay) MaterialTheme.colorScheme.primary else LocalContentColorOrDefault())
                 }
                 TextButton({ onAddToPlaylist(track) }) { Text(stringResource(R.string.add_to_playlist)) }
                 TextButton({ onPlayVideo(track) }) { Text(stringResource(R.string.play_video)) }

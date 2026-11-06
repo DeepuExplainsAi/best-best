@@ -141,7 +141,7 @@ fun DetailScreen(
                             TrackRow(t, playing = playing.current?.id == t.id, onClick = { onPlay(tracks, i) }, onMenu = { onMenu(t) })
                             if (i >= tracks.size - 4) LaunchedEffect(tracks.size) { vm.loadMore() }
                         }
-                        items(p.value.shelves) { ShelfRow(it, onItem) }
+                        items(p.value.shelves) { ShelfRow(it, onItem, onPlay) }
                         if (tracks.isEmpty() && p.value.shelves.isEmpty()) item("empty") { SectionTitle(stringResource(R.string.nothing_here)) }
                     }
                 }

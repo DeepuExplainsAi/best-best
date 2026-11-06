@@ -196,7 +196,7 @@ private fun TabContent(
         val m = Modifier.padding(pad)
         // Each tab keeps its own ViewModel/scroll because its composable is keyed by tab and saved state lives in the ViewModelStore.
         when (tab) {
-            Tab.HOME -> HomeScreen(onItem, m)
+            Tab.HOME -> HomeScreen(onItem, onPlay, m)
             Tab.SEARCH -> SearchScreen(onItem, onPlay, onMenu, m)
             Tab.LIBRARY -> LibraryScreen({ push(Dest.Playlist(it)) }, { push(Dest.Liked) }, { push(Dest.Recent) }, onItem, say, m)
             Tab.DOWNLOADS -> DownloadsScreen(onPlay, onMenu, m)

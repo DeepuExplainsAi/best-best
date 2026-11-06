@@ -41,7 +41,12 @@ data class PlayerUiState(
  * UI-side handle to the playback service. Safe to create anywhere: it connects lazily, reconnects
  * if the service dies, and survives Activity recreation because it is an app-level singleton.
  */
-class PlayerController(private val context: Context, private val sleepTimer: SleepTimer) {
+class PlayerController(
+    private val context: Context,
+    private val sleepTimer: SleepTimer,
+    private val music: app.dkord.data.yt.MusicRepository,
+    private val settings: app.dkord.data.settings.SettingsRepository,
+) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val _state = MutableStateFlow(PlayerUiState())
     val state: StateFlow<PlayerUiState> = _state
@@ -134,7 +139,31 @@ class PlayerController(private val context: Context, private val sleepTimer: Sle
     // ---- state ----
 
     private val listener = object : Player.Listener {
-        override fun onEvents(player: Player, events: Player.Events) = refresh(player)
+        override fun onEvents(player: Player, events: Player.Events) { refresh(player); maybeAutoplay(player) }
+    }
+
+    private var fetchingFor: String? = null
+
+    /** Autoplay: when the last (or second to last) track is playing or the queue ended, append related songs. */
+    private fun maybeAutoplay(p: Player) {
+        if (!settings.settings.value.autoplay || p.mediaItemCount == 0) return
+        val ended = p.playbackState == Player.STATE_ENDED
+        val nearEnd = p.currentMediaItemIndex >= p.mediaItemCount - 2
+        if (!ended && !nearEnd) return
+        if (p.repeatMode != Player.REPEAT_MODE_OFF) return
+        val last = p.getMediaItemAt(p.mediaItemCount - 1).toTrack()
+        if (fetchingFor == last.id) return
+        fetchingFor = last.id
+        scope.launch {
+            val more = runCatching { music.related(last) }.getOrDefault(emptyList())
+            val c = controller ?: return@launch
+            val have = (0 until c.mediaItemCount).map { c.getMediaItemAt(it).mediaId }.toSet()
+            val fresh = more.filter { it.id !in have }.take(15)
+            if (fresh.isEmpty()) { fetchingFor = null; return@launch }
+            val firstNew = c.mediaItemCount
+            c.addMediaItems(fresh.map { it.toMediaItem() })
+            if (c.playbackState == Player.STATE_ENDED) { c.seekToDefaultPosition(firstNew); c.prepare(); c.play() }
+        }
     }
 
     private fun refresh(p: Player) {

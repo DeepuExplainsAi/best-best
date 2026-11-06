@@ -87,6 +87,14 @@ fun SettingsScreen(onBack: () -> Unit, onLogs: () -> Unit, onMessage: (String) -
             SectionTitle(stringResource(R.string.audio))
             Item(stringResource(R.string.audio_quality), stringResource(qualityNames.getValue(s.quality))) { dialog = "quality" }
 
+            ListItem(
+                modifier = Modifier.clickable { repo.setAutoplay(!s.autoplay) },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                headlineContent = { Text(stringResource(R.string.autoplay)) },
+                supportingContent = { Text(stringResource(R.string.autoplay_hint)) },
+                trailingContent = { Switch(s.autoplay, { repo.setAutoplay(it) }) },
+            )
+
             SectionTitle(stringResource(R.string.appearance))
             Item(stringResource(R.string.theme), stringResource(themeNames.getValue(s.theme))) { dialog = "theme" }
             if (Build.VERSION.SDK_INT >= 31) {

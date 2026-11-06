@@ -103,4 +103,9 @@
     <string name="update_install">अभी अपडेट करें</string>
     <string name="update_downloading">अपडेट डाउनलोड हो रहा है…</string>
     <string name="update_failed">अपडेट विफल। इंटरनेट जाँचें।</string>
+    <string name="autoplay">ऑटोप्ले</string>
+    <string name="autoplay_hint">क्यू खत्म होने पर मिलते-जुलते गाने चलते रहें</string>
+    <string name="repeat_off">रिपीट बंद</string>
+    <string name="repeat_all">सब रिपीट</string>
+    <string name="repeat_one">एक गाना रिपीट</string>
 </resources>

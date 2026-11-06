@@ -43,6 +43,18 @@ class MusicRepository(private val client: InnerTubeClient) {
         SearchResult(page.items.mapNotNull(::mapItem), page.nextPage?.let { SearchCursor(cursor.query, cursor.filter, it) })
     }
 
+    /** Songs related to [track] for autoplay: the extractor's related list, else a search by artist and title. */
+    suspend fun related(track: Track): List<Track> = withContext(Dispatchers.IO) {
+        val fromRelated = runCatching {
+            org.schabi.newpipe.extractor.stream.StreamInfo.getInfo(ServiceList.YouTube, "https://www.youtube.com/watch?v=${track.id}")
+                .relatedItems.filterIsInstance<StreamInfoItem>().mapNotNull(::mapItem).mapNotNull { it.track }
+        }.getOrDefault(emptyList())
+        val songs = fromRelated.ifEmpty {
+            runCatching { search("${track.artist} ${track.title}", SearchFilter.SONGS).items.mapNotNull { it.track } }.getOrDefault(emptyList())
+        }
+        songs.filter { it.id != track.id && it.durationSec in 30..900 }
+    }
+
     // ---- Browse: InnerTube WEB_REMIX (personalised when signed in) ----
 
     suspend fun home(chip: app.dkord.core.Chip? = null): Page =

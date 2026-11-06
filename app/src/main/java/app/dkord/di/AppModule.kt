@@ -41,7 +41,7 @@ val appModule = module {
     single { DownloadManager(androidContext(), get(), get()) }
     single { QueueStore(androidContext()) }
     single { SleepTimer(CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)) }
-    single { PlayerController(androidContext(), get()) }
+    single { PlayerController(androidContext(), get(), get(), get()) }
     single { LyricsRepository() }
     single { Actions(get(), get(), get()) }
     single { app.dkord.data.update.AppUpdater(androidContext()) }

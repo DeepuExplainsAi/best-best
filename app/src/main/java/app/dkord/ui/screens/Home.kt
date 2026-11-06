@@ -94,7 +94,7 @@ private val CURATED = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(onItem: (BrowseItem) -> Unit, modifier: Modifier = Modifier) {
+fun HomeScreen(onItem: (BrowseItem) -> Unit, onPlay: (List<app.dkord.core.Track>, Int) -> Unit, modifier: Modifier = Modifier) {
     val repo: MusicRepository = koinInject()
     val vm = koinVm { HomeViewModel(repo) }
     val page by vm.page.collectAsState()
@@ -111,8 +111,8 @@ fun HomeScreen(onItem: (BrowseItem) -> Unit, modifier: Modifier = Modifier) {
         when (val p = page) {
             Load.Loading -> Loading()
             is Load.Failed -> if (extra.isEmpty()) ErrorBox(p.error, { vm.load() }) else LazyColumn(contentPadding = PaddingValues(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (recentShelf != null) item("recent") { ShelfRow(recentShelf, onItem) }
-                items(extra) { ShelfRow(it, onItem) }
+                if (recentShelf != null) item("recent") { ShelfRow(recentShelf, onItem, onPlay) }
+                items(extra) { ShelfRow(it, onItem, onPlay) }
             }
             is Load.Ok -> LazyColumn(contentPadding = PaddingValues(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (p.value.chips.isNotEmpty()) item("chips") {
@@ -120,9 +120,9 @@ fun HomeScreen(onItem: (BrowseItem) -> Unit, modifier: Modifier = Modifier) {
                         items(p.value.chips) { c -> FilterChip(selected == c, { vm.select(c) }, { Text(c.title) }) }
                     }
                 }
-                if (recentShelf != null && selected == null) item("recent") { ShelfRow(recentShelf, onItem) }
-                items(p.value.shelves) { ShelfRow(it, onItem) }
-                if (selected == null) items(extra) { ShelfRow(it, onItem) }
+                if (recentShelf != null && selected == null) item("recent") { ShelfRow(recentShelf, onItem, onPlay) }
+                items(p.value.shelves) { ShelfRow(it, onItem, onPlay) }
+                if (selected == null) items(extra) { ShelfRow(it, onItem, onPlay) }
                 if (p.value.shelves.isEmpty() && extra.isEmpty()) item("empty") { Text(stringResource(R.string.nothing_here), Modifier.padding(32.dp)) }
             }
         }

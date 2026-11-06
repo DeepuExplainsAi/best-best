@@ -28,6 +28,8 @@ data class Settings(
     /** SAF tree uri chosen by the user, or null for the app's own music folder. */
     val downloadTree: String? = null,
     val cacheMb: Int = 512,
+    /** When the queue runs out, keep playing related songs. */
+    val autoplay: Boolean = true,
 )
 
 private val Context.store: DataStore<Preferences> by preferencesDataStore("settings")
@@ -41,6 +43,7 @@ class SettingsRepository(context: Context) {
     private val kDynamic = stringPreferencesKey("dynamic")
     private val kTree = stringPreferencesKey("download_tree")
     private val kCache = intPreferencesKey("cache_mb")
+    private val kAutoplay = stringPreferencesKey("autoplay")
 
     private fun Preferences.toSettings() = Settings(
         quality = enumOr(this[kQuality], AudioQuality.HIGH),
@@ -48,6 +51,7 @@ class SettingsRepository(context: Context) {
         dynamicColor = this[kDynamic] == "1",
         downloadTree = this[kTree],
         cacheMb = this[kCache] ?: 512,
+        autoplay = this[kAutoplay] != "0",
     )
 
     /** First value is loaded synchronously (a tiny file) so the player and theme never start with wrong defaults. */
@@ -57,6 +61,7 @@ class SettingsRepository(context: Context) {
     fun setQuality(v: AudioQuality) = edit { it[kQuality] = v.name }
     fun setTheme(v: ThemeMode) = edit { it[kTheme] = v.name }
     fun setDynamicColor(v: Boolean) = edit { it[kDynamic] = if (v) "1" else "0" }
+    fun setAutoplay(v: Boolean) = edit { it[kAutoplay] = if (v) "1" else "0" }
     fun setCacheMb(v: Int) = edit { it[kCache] = v }
     fun setDownloadTree(uri: String?) = edit { if (uri == null) it.remove(kTree) else it[kTree] = uri }
 

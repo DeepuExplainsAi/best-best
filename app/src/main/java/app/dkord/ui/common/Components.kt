@@ -144,11 +144,18 @@ fun ItemCard(item: BrowseItem, onClick: () -> Unit, modifier: Modifier = Modifie
 }
 
 @Composable
-fun ShelfRow(shelf: Shelf, onItem: (BrowseItem) -> Unit) {
+fun ShelfRow(shelf: Shelf, onItem: (BrowseItem) -> Unit, onPlay: ((List<app.dkord.core.Track>, Int) -> Unit)? = null) {
+    // Tapping a song plays the whole shelf from that song, so the next ones follow automatically.
+    val songs = remember(shelf) { shelf.items.mapNotNull { it.track } }
+    fun click(item: BrowseItem) {
+        val t = item.track
+        if (onPlay != null && item.kind == ItemKind.SONG && t != null) onPlay(songs, songs.indexOfFirst { it.id == t.id }.coerceAtLeast(0))
+        else onItem(item)
+    }
     Column {
         if (shelf.title.isNotBlank()) SectionTitle(shelf.title)
         LazyRow(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(shelf.items, key = null) { ItemCard(it, onClick = { onItem(it) }) }
+            items(shelf.items, key = null) { ItemCard(it, onClick = { click(it) }) }
         }
     }
 }
