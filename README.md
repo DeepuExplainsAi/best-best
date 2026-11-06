@@ -1,7 +1,7 @@
 # Dkord by DeepuGupta
 
 Free, open-source Android music app that streams YouTube Music **entirely on-device**.
-No backend, no paid APIs, no ads, zero running cost. Licensed GPL-3.0 (NewPipeExtractor is GPL-3.0).
+No backend, no paid APIs, no ads, zero running cost. Licensed GPL-3.0
 
 ## Features
 Search (songs, albums, artists, playlists, live suggestions) · Home with moods, charts and new releases · background playback with media notification, lock-screen and Bluetooth controls · queue, shuffle, repeat, speed, sleep timer · synced lyrics (LRCLIB) · offline downloads as tagged M4A (title, artist, album, cover) with pause/resume that survives app kill · local playlists with JSON import/export · optional YouTube Music sign-in for your liked songs, library and personalised home · dark / light / AMOLED / Material You themes.
