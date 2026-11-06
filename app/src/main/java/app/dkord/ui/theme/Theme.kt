@@ -53,5 +53,8 @@ fun DkordTheme(mode: ThemeMode, dynamicColor: Boolean, content: @Composable () -
             surfaceContainer = Color(0xFF0A0A0A), surfaceContainerHigh = Color(0xFF141414),
         )
     }
-    MaterialTheme(colorScheme = scheme, content = content)
+    MaterialTheme(colorScheme = scheme) {
+        // Sets the default icon/text colour for everything, including screens that draw their own background (full player).
+        androidx.compose.material3.Surface(color = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onBackground, content = content)
+    }
 }
