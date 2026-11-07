@@ -52,6 +52,7 @@ import app.dkord.core.Track
 import app.dkord.player.PlaybackEvents
 import app.dkord.player.PlaybackProblem
 import app.dkord.ui.common.Actions
+import app.dkord.ui.common.HomeUpdatePrompt
 import app.dkord.ui.common.PlaylistPicker
 import app.dkord.ui.common.TrackMenu
 import app.dkord.ui.player.FullPlayer
@@ -158,6 +159,11 @@ fun App() {
             exit = slideOutVertically(tween(250)) { it } + fadeOut(),
         ) { FullPlayer(state, onClose = { playerOpen = false }, onAddToPlaylist = { pickTracks = listOf(it) }, onPlayVideo = { playerOpen = false; push(Dest.Video(it.id, it.title)) }, onListenTogether = { playerOpen = false; push(Dest.ListenTogether) }) }
     }
+
+    HomeUpdatePrompt(
+        visible = top == null && tab == Tab.HOME && !playerOpen && menuTrack == null && pickTracks == null,
+        onOpenSettings = { push(Dest.Settings) },
+    )
 
     menuTrack?.let { t -> TrackMenu(t, onDismiss = { menuTrack = null }, onAddToPlaylist = { pickTracks = listOf(it) }) }
     pickTracks?.let { PlaylistPicker(it, onDismiss = { pickTracks = null }, onResult = ::say) }

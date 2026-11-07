@@ -99,7 +99,7 @@
     <string name="app_version">वर्शन %s</string>
     <string name="update_checking">जाँच हो रही है…</string>
     <string name="update_none">आपके पास नवीनतम वर्शन है</string>
-    <string name="update_available">वर्शन %s उपलब्ध है। यह मौजूदा ऐप के ऊपर इंस्टॉल होगा; आपकी प्लेलिस्ट, लाइक और डाउनलोड सुरक्षित रहेंगे।</string>
+    <string name="update_available">वर्शन %1$s उपलब्ध है।</string>
     <string name="update_install">अभी अपडेट करें</string>
     <string name="update_downloading">अपडेट डाउनलोड हो रहा है…</string>
     <string name="update_failed">अपडेट विफल। इंटरनेट जाँचें।</string>
@@ -140,4 +140,17 @@
     <string name="room_message_error">रूम की स्थिति सुरक्षित रूप से शेयर नहीं हो सकी। दूसरा गाना चुनकर फिर कोशिश करें।</string>
     <string name="room_playback_error">प्लेबैक सिंक नहीं हो सका। फिर सिंक करें और चलाएँ दबाएँ।</string>
     <string name="choliwood_name">Choliwood</string>
+    <string name="update_prompt_title">अपडेट उपलब्ध है</string>
+    <string name="update_later">बाद में</string>
+    <string name="update_check">अपडेट जाँचें</string>
+    <string name="update_size">%1$s MB</string>
+    <string name="update_progress_known">%2$s MB में से %1$s डाउनलोड · %3$s MB बाकी</string>
+    <string name="update_progress_unknown">%1$s MB डाउनलोड हुआ</string>
+    <string name="update_ready">इंस्टॉल करने के लिए तैयार</string>
+    <string name="update_open_installer">अपडेट इंस्टॉल करें</string>
+    <string name="update_allow_installs">इंस्टॉल की अनुमति दें</string>
+    <string name="update_permission_needed">Android सेटिंग्स में Dkord को यह अपडेट इंस्टॉल करने की अनुमति दें।</string>
+    <string name="update_verification_failed">अपडेट की जाँच विफल। बाद में फिर कोशिश करें।</string>
+    <string name="update_installer_failed">इंस्टॉलर नहीं खुल सका। फिर कोशिश करें।</string>
+    <string name="update_text">ऐप में एक्सट्रैक्टर %1$s है, नया वर्शन %2$s है। एक्सट्रैक्टर ऐप का हिस्सा है; रिलीज़ पेज से ऐप अपडेट करें।</string>
 </resources>
