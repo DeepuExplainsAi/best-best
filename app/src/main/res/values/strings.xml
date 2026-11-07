@@ -165,7 +165,7 @@
     <string name="new_releases">New Releases</string>
     <string name="last_24_hours">Last 24 hours</string>
     <string name="last_7_days">Last 7 days</string>
-    <string name="no_new_songs">No new songs found</string>
+    <string name="no_new_songs">No releases in this period</string>
     <string name="listen_together">Listen together</string>
     <string name="room_create">Create room</string>
     <string name="room_join">Join room</string>
@@ -202,4 +202,14 @@
     <string name="update_permission_needed">Allow Dkord to install this update in Android settings.</string>
     <string name="update_verification_failed">Update verification failed. Try again later.</string>
     <string name="update_installer_failed">Could not open the installer. Try again.</string>
+    <string name="release_all">All</string>
+    <string name="release_hollywood">Hollywood</string>
+    <string name="release_bollywood">Bollywood</string>
+    <string name="release_punjabi">Punjabi</string>
+    <string name="release_tamil">Tamil</string>
+    <string name="release_telugu">Telugu</string>
+    <string name="last_10_days">Last 10 days</string>
+    <string name="release_dates_unavailable">Could not verify release dates. Try again.</string>
+    <string name="section_expanded">Expanded</string>
+    <string name="section_collapsed">Collapsed</string>
 </resources>
