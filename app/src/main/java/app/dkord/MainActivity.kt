@@ -1,27 +1,34 @@
 package app.dkord
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
+import app.dkord.data.settings.AppLanguages
 import app.dkord.data.settings.SettingsRepository
 import app.dkord.player.PlayerController
 import app.dkord.ui.App
 import app.dkord.ui.theme.DkordTheme
 import org.koin.android.ext.android.inject
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     private val player: PlayerController by inject()
     private val settings: SettingsRepository by inject()
 
     private val notifPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
+    override fun attachBaseContext(newBase: Context) {
+        AppLanguages.initialize(newBase)
+        super.attachBaseContext(newBase)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

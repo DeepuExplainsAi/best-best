@@ -41,6 +41,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.core.net.toUri
 import app.dkord.R
 import app.dkord.data.download.DownloadStorage
+import app.dkord.data.settings.AppLanguage
+import app.dkord.data.settings.AppLanguages
 import app.dkord.data.settings.SettingsRepository
 import app.dkord.data.settings.ThemeMode
 import app.dkord.data.stream.AudioQuality
@@ -75,6 +77,8 @@ fun SettingsScreen(onBack: () -> Unit, onLogs: () -> Unit, onMessage: (String) -
     }
 
     val qualityNames = mapOf(AudioQuality.LOW to R.string.q_low, AudioQuality.MEDIUM to R.string.q_medium, AudioQuality.HIGH to R.string.q_high)
+    val languageNames = mapOf(AppLanguage.ENGLISH to R.string.language_english, AppLanguage.HINDI to R.string.language_hindi)
+    val selectedLanguage = AppLanguages.selected(ctx)
     val themeNames = mapOf(ThemeMode.SYSTEM to R.string.theme_system, ThemeMode.LIGHT to R.string.theme_light, ThemeMode.DARK to R.string.theme_dark, ThemeMode.AMOLED to R.string.theme_amoled)
 
     Scaffold(topBar = {
@@ -93,6 +97,7 @@ fun SettingsScreen(onBack: () -> Unit, onLogs: () -> Unit, onMessage: (String) -
             )
 
             SectionTitle(stringResource(R.string.appearance))
+            Item(stringResource(R.string.app_language), stringResource(languageNames.getValue(selectedLanguage))) { dialog = "language" }
             Item(stringResource(R.string.theme), stringResource(themeNames.getValue(s.theme))) { dialog = "theme" }
             if (Build.VERSION.SDK_INT >= 31) {
                 ListItem(
@@ -143,6 +148,10 @@ fun SettingsScreen(onBack: () -> Unit, onLogs: () -> Unit, onMessage: (String) -
     }
 
     when (dialog) {
+        "language" -> Choice(stringResource(R.string.app_language), AppLanguage.entries.map { it to stringResource(languageNames.getValue(it)) }, selectedLanguage, {
+            dialog = ""
+            AppLanguages.select(ctx, it)
+        }) { dialog = "" }
         "quality" -> Choice(stringResource(R.string.audio_quality), AudioQuality.entries.map { it to stringResource(qualityNames.getValue(it)) }, s.quality, { repo.setQuality(it) }) { dialog = "" }
         "theme" -> Choice(stringResource(R.string.theme), ThemeMode.entries.map { it to stringResource(themeNames.getValue(it)) }, s.theme, { repo.setTheme(it) }) { dialog = "" }
         "cache" -> Choice(stringResource(R.string.cache_size), listOf(128, 256, 512, 1024, 2048).map { it to "$it MB" }, s.cacheMb, { repo.setCacheMb(it); onMessage(ctx.getString(R.string.applies_on_restart)) }) { dialog = "" }

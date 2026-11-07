@@ -7,8 +7,8 @@
     <string name="tab_downloads">Downloads</string>
     <string name="placeholder_part1">Project skeleton is ready. Features arrive in the next parts.</string>
     <string name="channel_playback">Playback</string>
-    <string name="err_bot_check">YouTube wants to confirm you\'re not a bot. Try again later, or sign in under Library.</string>
-    <string name="err_age_restricted">This track is age-restricted. Sign in with an adult account to play it.</string>
+    <string name="err_bot_check">YouTube wants to confirm you\'re not a bot. Try again later.</string>
+    <string name="err_age_restricted">This track is age-restricted and cannot be played in guest mode.</string>
     <string name="err_kids">This track is restricted (made for kids).</string>
     <string name="err_geo">This track isn\'t available in your country.</string>
     <string name="err_private">This track is private.</string>
@@ -225,4 +225,7 @@
     <string name="room_current_song">Current song</string>
     <string name="room_open_player">Open player</string>
     <string name="room_guest_start">Tap Sync &amp; play to join the music.</string>
+    <string name="app_language">App language</string>
+    <string name="language_english">English (default)</string>
+    <string name="language_hindi">Hindi</string>
 </resources>
