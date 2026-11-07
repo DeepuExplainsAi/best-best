@@ -38,7 +38,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import app.dkord.R
 import app.dkord.data.download.DownloadStorage
@@ -49,6 +48,7 @@ import app.dkord.data.stream.ExtractorHealth
 import app.dkord.data.stream.StreamModule
 import app.dkord.player.AudioCache
 import app.dkord.ui.common.AppUpdateCard
+import app.dkord.ui.common.softClickable
 import app.dkord.ui.common.SectionTitle
 import app.dkord.ui.common.formatSize
 import kotlinx.coroutines.launch
@@ -166,7 +166,7 @@ fun SettingsScreen(onBack: () -> Unit, onLogs: () -> Unit, onMessage: (String) -
 @Composable
 private fun Item(title: String, subtitle: String, onClick: () -> Unit) {
     ListItem(
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = Modifier.softClickable(onClick),
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         headlineContent = { Text(title) },
         supportingContent = { Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant) },

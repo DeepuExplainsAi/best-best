@@ -10,13 +10,17 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
+import okhttp3.Authenticator
+import okhttp3.CookieJar
 import okhttp3.Request
 import java.io.File
 import java.io.IOException
 import java.security.MessageDigest
 
 /** Bounded progress events and atomic completion; partial/unverified APKs never reach the installer. */
-class UpdateDownloader(private val http: OkHttpClient = Http.client) {
+class UpdateDownloader(client: OkHttpClient = Http.client) {
+    private val http = client.newBuilder().cookieJar(CookieJar.NO_COOKIES).authenticator(Authenticator.NONE)
+        .followSslRedirects(false).build()
     suspend fun download(info: UpdateInfo, destination: File, onProgress: (UpdateProgress) -> Unit): Unit = withContext(Dispatchers.IO) {
         destination.parentFile?.mkdirs()
         val partial = File(destination.parentFile, destination.name + ".part")

@@ -165,7 +165,7 @@
     <string name="new_releases">New Releases</string>
     <string name="last_24_hours">Last 24 hours</string>
     <string name="last_7_days">Last 7 days</string>
-    <string name="no_new_songs">No releases in this period</string>
+    <string name="no_new_songs">No releases found in this period</string>
     <string name="listen_together">Listen together</string>
     <string name="room_create">Create room</string>
     <string name="room_join">Join room</string>

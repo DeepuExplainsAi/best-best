@@ -5,7 +5,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
@@ -64,7 +63,7 @@ fun AppUpdateCard() {
             val info = state.info
             if (info != null) {
                 Text(stringResource(R.string.update_available, info.version), style = MaterialTheme.typography.bodyMedium)
-                if (state.phase != UpdatePhase.DOWNLOADING && state.phase != UpdatePhase.READY) info.sizeBytes?.let {
+                if (state.phase != UpdatePhase.DOWNLOADING) info.sizeBytes?.let {
                     Text(stringResource(R.string.update_size, megabytes(it)), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }

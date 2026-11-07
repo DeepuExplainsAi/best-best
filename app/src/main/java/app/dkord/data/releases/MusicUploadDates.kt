@@ -3,6 +3,7 @@ package app.dkord.data.releases
 import app.dkord.core.Track
 import app.dkord.data.net.Http
 import app.dkord.data.yt.at
+import app.dkord.data.yt.InnerTubeClient
 import app.dkord.data.yt.lenientJson
 import app.dkord.data.yt.str
 import kotlinx.coroutines.CoroutineStart
@@ -32,7 +33,7 @@ internal class MusicUploadDates(client: OkHttpClient = Http.client) {
     suspend fun fetch(track: Track): Long? = withContext(Dispatchers.IO) {
         if (!Regex("[A-Za-z0-9_-]{11}").matches(track.id)) return@withContext null
         val request = Request.Builder().url("https://www.youtube.com/watch?v=${track.id}")
-            .header("User-Agent", "Mozilla/5.0").header("Accept-Language", "en-US,en;q=0.9").build()
+            .header("User-Agent", InnerTubeClient.WEB_UA).header("Accept-Language", "en-US,en;q=0.9").build()
         coroutineScope {
             val call = http.newCall(request)
             val cancellation = launch(start = CoroutineStart.UNDISPATCHED) {

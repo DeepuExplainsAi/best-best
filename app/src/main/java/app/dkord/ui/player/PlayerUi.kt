@@ -2,6 +2,7 @@ package app.dkord.ui.player
 
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -95,6 +96,8 @@ import app.dkord.player.PlayerUiState
 import app.dkord.player.SleepState
 import app.dkord.ui.common.Actions
 import app.dkord.ui.common.Cover
+import app.dkord.ui.common.DkordMotion
+import app.dkord.ui.common.softClickable
 import app.dkord.ui.common.formatTime
 import app.dkord.ui.common.hiRes
 import coil3.compose.AsyncImage
@@ -189,7 +192,7 @@ fun FullPlayer(state: PlayerUiState, onClose: () -> Unit, onAddToPlaylist: (Trac
             }
 
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                AnimatedContent(panel, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "panel") { p ->
+                AnimatedContent(panel, transitionSpec = { fadeIn(tween(DkordMotion.CONTENT)) togetherWith fadeOut(tween(DkordMotion.QUICK)) }, label = "panel") { p ->
                     when (p) {
                         Panel.ART -> ArtPanel(track, controller)
                         Panel.LYRICS -> LyricsPanel(track, state.positionMs, seek)
@@ -272,7 +275,7 @@ private fun OptionSheet(title: String, options: List<Pair<String, () -> Unit>>, 
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
         options.forEach { (label, act) ->
-            Text(label, Modifier.fillMaxWidth().clickable { act(); onDismiss() }.padding(horizontal = 24.dp, vertical = 14.dp))
+            Text(label, Modifier.fillMaxWidth().softClickable({ act(); onDismiss() }).padding(horizontal = 24.dp, vertical = 14.dp))
         }
         Spacer(Modifier.height(24.dp))
     }
@@ -291,8 +294,8 @@ private fun ArtPanel(track: Track, controller: PlayerController) {
             },
         contentAlignment = Alignment.Center,
     ) {
-        AnimatedContent(track.id, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "art") { _ ->
-            Cover(track.thumbnail, 320.dp, radius = 12.dp)
+        AnimatedContent(track, transitionSpec = { fadeIn(tween(DkordMotion.CONTENT)) togetherWith fadeOut(tween(DkordMotion.QUICK)) }, label = "art") { shown ->
+            Cover(shown.thumbnail, 320.dp, radius = 12.dp)
         }
     }
 }

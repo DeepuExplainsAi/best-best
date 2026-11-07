@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag matching app versionName (for example v0.5.0)'
+        description: 'Release tag matching app versionName (for example v0.6.0)'
         required: true
         type: string
 
@@ -89,12 +89,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cat > "$RUNNER_TEMP/release-notes.md" <<'NOTES'
-          Dkord v0.5.0
-
+          printf 'Dkord %s\n\n' "$TAG" > "$RUNNER_TEMP/release-notes.md"
+          cat >> "$RUNNER_TEMP/release-notes.md" <<'NOTES'
+          - Home update prompts with Update / Later and live APK size, downloaded and remaining MB in Settings.
+          - Verified update downloads and the Android system installer; no uninstall or signing-key change.
+          - Collapsed-by-default New Releases with category filters and Last 24 hours / 7 days / 10 days windows, album discovery and publication-date metadata checks.
+          - Short screen, tab, panel and press animations while preserving tab state and the existing playback queue.
           - Share songs from the full player or track menu with a YouTube Music link.
           - Choliwood - Popular and Choliwood - Latest shelves on Home.
-          - New Releases with Last 24 hours / Last 7 days filters, upload-date checks and a 30-minute memory cache.
           - Listen Together: create/share/join rooms, manual sync and optional automatic following through the public ntfy.sh relay. Audio stays on each phone; anyone with the code can access the room, and room messages are not end-to-end encrypted.
           - Music-only anonymous YouTube Music Radio autoplay with songs-search fallback.
 

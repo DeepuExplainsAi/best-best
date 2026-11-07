@@ -32,3 +32,11 @@ val BackStackSaver = Saver<List<Dest>, String>(
     save = { json.encodeToString(kotlinx.serialization.builtins.ListSerializer(Dest.serializer()), it) },
     restore = { runCatching { json.decodeFromString(kotlinx.serialization.builtins.ListSerializer(Dest.serializer()), it) }.getOrDefault(emptyList()) },
 )
+
+/** Direction follows stack depth, so popping a nested screen never animates like a push. */
+internal enum class NavigationDirection { FORWARD, BACK, FADE }
+internal fun navigationDirection(fromDepth: Int, toDepth: Int): NavigationDirection = when {
+    toDepth > fromDepth -> NavigationDirection.FORWARD
+    toDepth < fromDepth -> NavigationDirection.BACK
+    else -> NavigationDirection.FADE
+}
