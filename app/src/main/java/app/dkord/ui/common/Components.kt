@@ -1,9 +1,7 @@
 package app.dkord.ui.common
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -107,7 +105,6 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) =
     Text(text, style = MaterialTheme.typography.titleLarge, modifier = modifier.padding(horizontal = 16.dp, vertical = 12.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
 
 /** A song row. Tap plays; the menu button opens [TrackMenu]. [trailing] replaces the menu button. */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TrackRow(
     track: Track,
@@ -119,7 +116,7 @@ fun TrackRow(
     trailing: @Composable (() -> Unit)? = null,
 ) {
     ListItem(
-        modifier = modifier.combinedClickable(onClick = onClick, onLongClick = onMenu),
+        modifier = modifier.softClickable(onClick, onMenu),
         colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
         leadingContent = { Cover(track.thumbnail, 52.dp) },
         headlineContent = { Text(track.title, maxLines = 1, overflow = TextOverflow.Ellipsis, color = if (playing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface) },
@@ -132,7 +129,7 @@ fun TrackRow(
 @Composable
 fun ItemCard(item: BrowseItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val w = if (item.kind == ItemKind.MOOD) 150.dp else 140.dp
-    Column(modifier.width(w).clip(RoundedCornerShape(8.dp)).clickable(onClick = onClick), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(modifier.width(w).clip(RoundedCornerShape(8.dp)).softClickable(onClick), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (item.kind == ItemKind.MOOD) {
             Box(Modifier.size(w, 64.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(12.dp), Alignment.CenterStart) {
                 Text(item.title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -166,7 +163,7 @@ fun ShelfRow(shelf: Shelf, onItem: (BrowseItem) -> Unit, onPlay: ((List<app.dkor
 @Composable
 fun BrowseRow(item: BrowseItem, onClick: () -> Unit, onMenu: (() -> Unit)? = null) {
     ListItem(
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = Modifier.softClickable(onClick),
         colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
         leadingContent = { Cover(item.thumbnail, 52.dp, round = item.kind == ItemKind.ARTIST) },
         headlineContent = { Text(item.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
@@ -200,7 +197,7 @@ fun ConfirmDialog(title: String, text: String, confirm: String, onDismiss: () ->
 @Composable
 private fun MenuRow(icon: ImageVector, label: String, onClick: () -> Unit) {
     ListItem(
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = Modifier.softClickable(onClick),
         colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
         leadingContent = { Icon(icon, null) },
         headlineContent = { Text(label) },

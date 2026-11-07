@@ -12,6 +12,7 @@ object RoomCode {
         buildString { repeat(LENGTH) { append(ALPHABET[random.nextInt(ALPHABET.length)]) } }
 
     fun normalize(input: String): String? = input.trim().uppercase(Locale.ROOT)
+        .filterNot { it.isWhitespace() || it == '-' }
         .takeIf { it.length == LENGTH && it.all { char -> char in ALPHABET } }
 
     fun topic(code: String): String = "dkord-" + requireNotNull(normalize(code)) { "Invalid room code" }

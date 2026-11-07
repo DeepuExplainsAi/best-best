@@ -6,8 +6,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
+      - name: Run resource, app-contract and release-guard regressions
+        run: python3 -B -m unittest discover -s .github/scripts -p 'test_*.py' -v
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -17,9 +20,39 @@ jobs:
       - name: Stable signing key
         env:
           KS: ${{ secrets.DKORD_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.DKORD_KEYSTORE_PASS }}
         run: |
-          if [ -n "$KS" ]; then echo "$KS" | base64 -d > "$RUNNER_TEMP/dkord.p12"; echo "DKORD_KEYSTORE=$RUNNER_TEMP/dkord.p12" >> "$GITHUB_ENV"; echo "DKORD_KEYSTORE_PASS=${{ secrets.DKORD_KEYSTORE_PASS }}" >> "$GITHUB_ENV"; fi
-      - run: ./gradlew testDebugUnitTest assembleDebug --stacktrace
+          if [ -n "$KS" ]; then
+            if [ -z "$KS_PASS" ]; then
+              echo "::error::The existing signing key also requires DKORD_KEYSTORE_PASS."
+              exit 1
+            fi
+            umask 077
+            keystore="$RUNNER_TEMP/dkord.p12"
+            printf '%s' "$KS" | base64 --decode > "$keystore"
+            test -s "$keystore"
+            keytool -list -storetype pkcs12 -keystore "$keystore" -alias dkord -storepass:env KS_PASS > /dev/null
+            delimiter="DKORD_PASS_$(python3 -c 'import uuid; print(uuid.uuid4().hex)')"
+            {
+              printf 'DKORD_KEYSTORE=%s\n' "$keystore"
+              printf 'DKORD_KEYSTORE_PASS<<%s\n' "$delimiter"
+              printf '%s\n' "$KS_PASS"
+              printf '%s\n' "$delimiter"
+            } >> "$GITHUB_ENV"
+          else
+            echo "::notice::No stable key supplied: this development APK cannot replace an official install."
+          fi
+      - name: Run the full Android unit suite and build the APK
+        run: ./gradlew testDebugUnitTest assembleDebug --stacktrace
+      - name: Upload Android unit-test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-unit-test-reports
+          path: |
+            app/build/test-results/testDebugUnitTest/
+            app/build/reports/tests/testDebugUnitTest/
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v7
         with:
           name: dkord-debug-apk

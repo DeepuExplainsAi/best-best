@@ -13,8 +13,8 @@ android {
         applicationId = "app.dkord"
         minSdk = 26
         targetSdk = 37
-        versionCode = 6
-        versionName = "0.5.0"
+        versionCode = 7
+        versionName = "0.6.0"
     }
 
     // One stable key for every build, so a new APK installs over the old one and keeps user data.
@@ -54,6 +54,7 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)

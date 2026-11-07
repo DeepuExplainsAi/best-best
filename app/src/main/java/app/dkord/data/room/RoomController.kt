@@ -8,13 +8,16 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.io.IOException
 import kotlin.math.abs
 
 enum class RoomRole { HOST, GUEST }
@@ -27,120 +30,178 @@ data class RoomState(
     val host: RoomMessage? = null,
     val followAutomatically: Boolean = false,
     val error: RoomError? = null,
+    val syncing: Boolean = false,
+    val hasSynced: Boolean = false,
 )
 
-/** App-lifetime, opt-in room session. Leaving cancels publishing/subscription and pending syncs. */
+/** App-lifetime opt-in sessions. Old jobs cannot change a newly joined room's state. */
 class RoomController(
     private val transport: RoomTransport,
     private val playback: RoomPlayback,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
     private val now: () -> Long = System::currentTimeMillis,
 ) {
-    private val _state = MutableStateFlow(RoomState())
-    val state: StateFlow<RoomState> = _state
+    private val mutableState = MutableStateFlow(RoomState())
+    val state: StateFlow<RoomState> = mutableState
     private var roomJob: Job? = null
     private var syncJob: Job? = null
+    private var session = 0L
+    private var syncRequest = 0L
+    private var cursor: String? = null
     private data class Seek(val videoId: String, val positionMs: Long, val at: Long)
     private var pendingSeek: Seek? = null
     private var hostChanges: Channel<Unit>? = null
 
-    /** Explicit UI seeks (including small lyric/slider seeks) are published without tick heuristics. */
     fun seeked(positionMs: Long) {
-        if (_state.value.role != RoomRole.HOST) return
+        if (state.value.role != RoomRole.HOST) return
         val id = playback.current().current?.id ?: return
         pendingSeek = Seek(id, positionMs.coerceIn(0, RoomCodec.MAX_POSITION_MS), now())
         hostChanges?.trySend(Unit)
     }
 
     fun create() {
+        if (state.value.role == RoomRole.HOST) return
         leave()
         val code = RoomCode.generate()
-        _state.value = RoomState(code, RoomRole.HOST, connecting = true)
-        host(code)
+        mutableState.value = RoomState(code, RoomRole.HOST, connecting = true)
+        host(code, session)
+    }
+
+    fun clearCodeError() {
+        if (state.value.role == null && state.value.error == RoomError.INVALID_CODE) mutableState.update { it.copy(error = null) }
     }
 
     fun join(input: String) {
         val code = RoomCode.normalize(input)
-        if (code == null) { _state.update { it.copy(error = RoomError.INVALID_CODE) }; return }
-        val follow = _state.value.followAutomatically
+        if (code == null) { mutableState.update { it.copy(error = RoomError.INVALID_CODE) }; return }
+        val previous = state.value
+        val sameRoom = previous.role == RoomRole.GUEST && previous.code == code
+        if (sameRoom && previous.connecting && previous.error == null) return
+        val resume = if (sameRoom) cursor else null
         leave()
-        _state.value = RoomState(code, RoomRole.GUEST, connecting = true, followAutomatically = follow)
-        roomJob = scope.launch {
-            try {
-                val cached = transport.latest(code)
-                cached?.let(::receive)
-                _state.update { it.copy(connecting = false, error = null) }
-                transport.subscribe(code, cached?.cursor).collect(::receive)
-            } catch (e: CancellationException) { throw e }
-            catch (e: Exception) { fail(e) }
-        }
+        cursor = resume
+        mutableState.value = RoomState(code, RoomRole.GUEST, connecting = true,
+            host = previous.host.takeIf { sameRoom }, followAutomatically = sameRoom && previous.followAutomatically,
+            hasSynced = sameRoom && previous.hasSynced)
+        guest(code, session)
     }
 
     fun leave() {
+        session++; syncRequest++
         roomJob?.cancel(); roomJob = null
-        hostChanges = null; pendingSeek = null
         syncJob?.cancel(); syncJob = null
-        _state.value = RoomState()
+        hostChanges?.close(); hostChanges = null
+        pendingSeek = null; cursor = null
+        mutableState.value = RoomState()
     }
 
     fun retry() {
-        val state = _state.value
-        val code = state.code ?: return
-        if (state.role == RoomRole.GUEST) join(code)
-        else if (state.role == RoomRole.HOST) {
+        val value = state.value
+        val code = value.code ?: return
+        if (value.connecting) return
+        if (value.role == RoomRole.GUEST) join(code)
+        else if (value.role == RoomRole.HOST) {
+            session++
             roomJob?.cancel()
-            _state.update { it.copy(connecting = true, error = null) }
-            host(code)
+            hostChanges?.close(); hostChanges = null
+            mutableState.update { it.copy(connecting = true, error = null) }
+            host(code, session)
         }
     }
 
     fun followAutomatically(follow: Boolean) {
-        if (_state.value.role != RoomRole.GUEST) return
-        _state.update { it.copy(followAutomatically = follow) }
-        if (follow) syncNow() else { syncJob?.cancel(); syncJob = null }
+        if (state.value.role != RoomRole.GUEST) return
+        mutableState.update { it.copy(followAutomatically = follow) }
+        if (follow) syncNow() else {
+            syncRequest++; syncJob?.cancel(); syncJob = null
+            mutableState.update { it.copy(syncing = false) }
+        }
     }
 
     fun syncNow() {
-        val state = _state.value
-        if (state.role != RoomRole.GUEST) return
-        val message = state.host ?: return
+        val value = state.value
+        if (value.role != RoomRole.GUEST) return
+        val message = value.host ?: return
+        val id = session
+        val request = ++syncRequest
         syncJob?.cancel()
+        mutableState.update { it.copy(syncing = true, error = it.error.takeUnless { error -> error == RoomError.PLAYBACK }) }
         syncJob = scope.launch {
-            try { playback.sync(message, synchronizedPosition(message, now())) }
-            catch (e: CancellationException) { throw e }
-            catch (_: Exception) {
-                _state.update { it.copy(error = RoomError.PLAYBACK) }
-                DebugLog.w("room", "Guest playback synchronization failed")
+            try {
+                playback.sync(message, synchronizedPosition(message, now()))
+                if (current(id) && request == syncRequest) mutableState.update { it.copy(hasSynced = true) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                if (current(id) && request == syncRequest) {
+                    mutableState.update { it.copy(error = RoomError.PLAYBACK) }
+                    DebugLog.w("room", "Guest playback synchronization failed")
+                }
+            } finally {
+                if (current(id) && request == syncRequest) mutableState.update { it.copy(syncing = false) }
             }
         }
     }
 
-    private fun receive(event: RoomEvent) {
+    private fun guest(code: String, id: Long) {
+        roomJob = scope.launch {
+            var after = cursor
+            while (isActive && current(id)) {
+                update(id) { it.copy(connecting = true) }
+                try {
+                    if (after == null) {
+                        val cached = transport.latest(code)
+                        cached?.let { receive(it, id) }
+                        after = cached?.cursor
+                        if (current(id)) cursor = after
+                    }
+                    update(id) { it.copy(connecting = false, error = null) }
+                    transport.subscribe(code, after).collect { event ->
+                        currentCoroutineContext().ensureActive()
+                        if (current(id)) {
+                            event.cursor?.let { after = it; cursor = it }
+                            receive(event, id)
+                        }
+                    }
+                    throw IOException("Room connection closed")
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    currentCoroutineContext().ensureActive()
+                    fail(e, id, reconnecting = true)
+                    delay(retryDelay(e))
+                }
+            }
+        }
+    }
+
+    private fun receive(event: RoomEvent, id: Long) {
+        if (!current(id)) return
         val message = event.message
         val clock = now()
         if (message.timestamp > clock + 5 * 60_000 || message.timestamp < clock - 12 * 60 * 60_000) return
-        val state = _state.value
-        if (state.role != RoomRole.GUEST || message.timestamp <= (state.host?.timestamp ?: 0)) return
-        _state.update { it.copy(host = message, connecting = false, error = null) }
-        if (_state.value.followAutomatically) syncNow()
+        val value = state.value
+        if (value.role != RoomRole.GUEST || message.timestamp <= (value.host?.timestamp ?: 0)) return
+        update(id) { it.copy(host = message, connecting = false, error = null) }
+        if (state.value.followAutomatically) syncNow()
     }
 
-    private fun host(code: String) {
+    private fun host(code: String, id: Long) {
         roomJob = scope.launch {
             coroutineScope {
                 val changes = Channel<Unit>(Channel.CONFLATED)
-                hostChanges = changes
+                if (current(id)) hostChanges = changes
                 launch {
                     var previous: RoomPlaybackState? = null
                     var observedAt = now()
-                    playback.states.collect { state ->
+                    playback.states.collect { value ->
                         val time = now()
                         val old = previous
                         val expected = old?.let { it.positionMs + if (it.playing) (time - observedAt).coerceAtLeast(0) else 0 }
-                        if (old == null || state.current != old.current || state.playing != old.playing ||
-                            state.queue != old.queue || state.queueIndex != old.queueIndex ||
-                            (expected != null && abs(state.positionMs - expected) > 1_200)) changes.trySend(Unit)
-                        previous = state; observedAt = time
+                        if (old == null || value.current != old.current || value.playing != old.playing ||
+                            value.queue != old.queue || value.queueIndex != old.queueIndex ||
+                            (expected != null && abs(value.positionMs - expected) > 1_200)) changes.trySend(Unit)
+                        previous = value; observedAt = time
                     }
                 }
                 launch {
@@ -149,41 +210,54 @@ class RoomController(
                         if (playback.current().playing) changes.trySend(Unit)
                     }
                 }
-                var sentAt = 0L
+                var sentAt = state.value.host?.timestamp ?: 0L
                 for (ignored in changes) {
+                    currentCoroutineContext().ensureActive()
                     val stamp = maxOf(now(), sentAt + 1)
                     var snapshot = playback.current()
                     pendingSeek?.let { seek ->
                         val expected = seek.positionMs + if (snapshot.playing) (now() - seek.at).coerceAtLeast(0) else 0
                         if (snapshot.current?.id == seek.videoId && now() - seek.at < 2_000 && abs(snapshot.positionMs - expected) > 50) {
-                            // The MediaController may not have acknowledged this UI seek yet.
                             snapshot = snapshot.copy(positionMs = expected)
                         } else pendingSeek = null
                     }
                     val message = roomMessage(snapshot, stamp)
-                    if (message == null) { _state.update { it.copy(connecting = false) }; continue }
+                    if (message == null) { update(id) { it.copy(connecting = false) }; continue }
                     try {
                         transport.publish(code, message)
+                        currentCoroutineContext().ensureActive()
                         sentAt = stamp
-                        _state.update { it.copy(connecting = false, host = message, error = null) }
-                    } catch (e: CancellationException) { throw e }
-                    catch (e: Exception) {
-                        fail(e)
-                        delay(if (e is RoomTransportException && e.rateLimited) 60_000 else 5_000)
+                        update(id) { it.copy(connecting = false, host = message, error = null) }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        currentCoroutineContext().ensureActive()
+                        val retryable = e !is IllegalArgumentException
+                        fail(e, id, reconnecting = retryable)
+                        if (retryable) {
+                            delay(retryDelay(e))
+                            changes.trySend(Unit) // Also retry a paused host, which has no playing heartbeat.
+                        }
                     }
                 }
             }
         }
     }
 
-    private fun fail(error: Exception) {
+    private fun current(id: Long) = session == id && state.value.role != null
+    private inline fun update(id: Long, block: (RoomState) -> RoomState) {
+        if (current(id)) mutableState.update { if (current(id)) block(it) else it }
+    }
+    private fun retryDelay(error: Exception) = if (error is RoomTransportException && error.rateLimited) 60_000L else 5_000L
+
+    private fun fail(error: Exception, id: Long, reconnecting: Boolean) {
+        if (!current(id)) return
         val type = when {
             error is RoomTransportException && error.rateLimited -> RoomError.RATE_LIMIT
             error is IllegalArgumentException -> RoomError.INVALID_MESSAGE
             else -> RoomError.NETWORK
         }
-        _state.update { it.copy(connecting = false, error = type) }
-        // Deliberately no topic/code, payload, URL, or underlying exception message in the log.
-        DebugLog.w("room", "Room relay failure: ${type.name}")
+        update(id) { it.copy(connecting = reconnecting, error = type) }
+        DebugLog.w("room", "Room connection failure: ${type.name}")
     }
 }

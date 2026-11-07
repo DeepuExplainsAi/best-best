@@ -38,17 +38,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import app.dkord.R
 import app.dkord.data.download.DownloadStorage
+import app.dkord.data.settings.AppLanguage
+import app.dkord.data.settings.AppLanguages
 import app.dkord.data.settings.SettingsRepository
 import app.dkord.data.settings.ThemeMode
 import app.dkord.data.stream.AudioQuality
 import app.dkord.data.stream.ExtractorHealth
 import app.dkord.data.stream.StreamModule
 import app.dkord.player.AudioCache
-import app.dkord.ui.common.ConfirmDialog
+import app.dkord.ui.common.AppUpdateCard
+import app.dkord.ui.common.softClickable
 import app.dkord.ui.common.SectionTitle
 import app.dkord.ui.common.formatSize
 import kotlinx.coroutines.launch
@@ -66,9 +68,6 @@ fun SettingsScreen(onBack: () -> Unit, onLogs: () -> Unit, onMessage: (String) -
     val scope = rememberCoroutineScope()
     var dialog by rememberSaveable { mutableStateOf("") }
     var cacheSize by remember { mutableStateOf(cache.sizeBytes) }
-    val updater: app.dkord.data.update.AppUpdater = koinInject()
-    var pending by remember { mutableStateOf<app.dkord.data.update.UpdateInfo?>(null) }
-    var updating by remember { mutableStateOf(false) }
     var latest by rememberSaveable { mutableStateOf<String?>(null) }
 
     val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
@@ -78,6 +77,8 @@ fun SettingsScreen(onBack: () -> Unit, onLogs: () -> Unit, onMessage: (String) -
     }
 
     val qualityNames = mapOf(AudioQuality.LOW to R.string.q_low, AudioQuality.MEDIUM to R.string.q_medium, AudioQuality.HIGH to R.string.q_high)
+    val languageNames = mapOf(AppLanguage.ENGLISH to R.string.language_english, AppLanguage.HINDI to R.string.language_hindi)
+    val selectedLanguage = AppLanguages.selected(ctx)
     val themeNames = mapOf(ThemeMode.SYSTEM to R.string.theme_system, ThemeMode.LIGHT to R.string.theme_light, ThemeMode.DARK to R.string.theme_dark, ThemeMode.AMOLED to R.string.theme_amoled)
 
     Scaffold(topBar = {
@@ -96,6 +97,7 @@ fun SettingsScreen(onBack: () -> Unit, onLogs: () -> Unit, onMessage: (String) -
             )
 
             SectionTitle(stringResource(R.string.appearance))
+            Item(stringResource(R.string.app_language), stringResource(languageNames.getValue(selectedLanguage))) { dialog = "language" }
             Item(stringResource(R.string.theme), stringResource(themeNames.getValue(s.theme))) { dialog = "theme" }
             if (Build.VERSION.SDK_INT >= 31) {
                 ListItem(
@@ -119,14 +121,7 @@ fun SettingsScreen(onBack: () -> Unit, onLogs: () -> Unit, onMessage: (String) -
             }
 
             SectionTitle(stringResource(R.string.app_update))
-            Item(stringResource(R.string.app_update), if (updating) stringResource(R.string.update_downloading) else stringResource(R.string.app_version, updater.currentVersion)) {
-                if (updating) return@Item
-                onMessage(ctx.getString(R.string.update_checking))
-                scope.launch {
-                    runCatching { updater.check() }.onFailure { onMessage(ctx.getString(R.string.update_failed)) }
-                        .onSuccess { if (it == null) onMessage(ctx.getString(R.string.update_none)) else { pending = it; dialog = "appupdate" } }
-                }
-            }
+            AppUpdateCard()
 
             SectionTitle(stringResource(R.string.troubleshooting))
             Item(stringResource(R.string.update_extractor), latest?.let { stringResource(R.string.extractor_versions, ExtractorHealth.BUNDLED_VERSION, it) } ?: stringResource(R.string.extractor_bundled, ExtractorHealth.BUNDLED_VERSION)) {
@@ -153,6 +148,10 @@ fun SettingsScreen(onBack: () -> Unit, onLogs: () -> Unit, onMessage: (String) -
     }
 
     when (dialog) {
+        "language" -> Choice(stringResource(R.string.app_language), AppLanguage.entries.map { it to stringResource(languageNames.getValue(it)) }, selectedLanguage, {
+            dialog = ""
+            AppLanguages.select(ctx, it)
+        }) { dialog = "" }
         "quality" -> Choice(stringResource(R.string.audio_quality), AudioQuality.entries.map { it to stringResource(qualityNames.getValue(it)) }, s.quality, { repo.setQuality(it) }) { dialog = "" }
         "theme" -> Choice(stringResource(R.string.theme), ThemeMode.entries.map { it to stringResource(themeNames.getValue(it)) }, s.theme, { repo.setTheme(it) }) { dialog = "" }
         "cache" -> Choice(stringResource(R.string.cache_size), listOf(128, 256, 512, 1024, 2048).map { it to "$it MB" }, s.cacheMb, { repo.setCacheMb(it); onMessage(ctx.getString(R.string.applies_on_restart)) }) { dialog = "" }
@@ -163,16 +162,6 @@ fun SettingsScreen(onBack: () -> Unit, onLogs: () -> Unit, onMessage: (String) -
             confirmButton = { TextButton({ dialog = ""; pickFolder.launch(null) }) { Text(stringResource(R.string.choose_folder)) } },
             dismissButton = { TextButton({ dialog = ""; repo.setDownloadTree(null) }) { Text(stringResource(R.string.use_default)) } },
         )
-        "appupdate" -> pending?.let { u -> AlertDialog(
-            onDismissRequest = { dialog = "" },
-            title = { Text(stringResource(R.string.app_update)) },
-            text = { Text(stringResource(R.string.update_available, u.version)) },
-            confirmButton = { TextButton({
-                dialog = ""; updating = true
-                scope.launch { runCatching { updater.install(u) }.onFailure { onMessage(ctx.getString(R.string.update_failed)) }; updating = false }
-            }) { Text(stringResource(R.string.update_install)) } },
-            dismissButton = { TextButton({ dialog = "" }) { Text(stringResource(R.string.cancel)) } },
-        ) }
         "update" -> AlertDialog(
             onDismissRequest = { dialog = "" },
             title = { Text(stringResource(R.string.update_extractor)) },
@@ -186,7 +175,7 @@ fun SettingsScreen(onBack: () -> Unit, onLogs: () -> Unit, onMessage: (String) -
 @Composable
 private fun Item(title: String, subtitle: String, onClick: () -> Unit) {
     ListItem(
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = Modifier.softClickable(onClick),
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         headlineContent = { Text(title) },
         supportingContent = { Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant) },

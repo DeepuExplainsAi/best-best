@@ -43,6 +43,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.runtime.saveable.SaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -52,6 +54,9 @@ import app.dkord.core.Track
 import app.dkord.player.PlaybackEvents
 import app.dkord.player.PlaybackProblem
 import app.dkord.ui.common.Actions
+import app.dkord.ui.common.HomeUpdateNotice
+import app.dkord.ui.common.ObserveAppUpdates
+import app.dkord.ui.common.DkordMotion
 import app.dkord.ui.common.PlaylistPicker
 import app.dkord.ui.common.TrackMenu
 import app.dkord.ui.player.FullPlayer
@@ -80,6 +85,7 @@ fun App() {
     val snack = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    val savedTabs = rememberSaveableStateHolder()
     var tab by rememberSaveable { mutableStateOf(Tab.HOME) }
     var stack by rememberSaveable(stateSaver = BackStackSaver) { mutableStateOf(emptyList<Dest>()) }
     var playerOpen by rememberSaveable { mutableStateOf(false) }
@@ -87,7 +93,7 @@ fun App() {
     var pickTracks by remember { mutableStateOf<List<Track>?>(null) }
 
     fun say(text: String) { scope.launch { snack.showSnackbar(text) } }
-    fun push(d: Dest) { stack = stack + d }
+    fun push(d: Dest) { if (stack.lastOrNull() != d) stack = stack + d }
     fun pop() { stack = stack.dropLast(1) }
     fun play(list: List<Track>, i: Int) = player.play(list, i)
 
@@ -128,23 +134,28 @@ fun App() {
             },
         ) { pad ->
             AnimatedContent(
-                top,
-                modifier = Modifier.padding(pad),
+                targetState = stack,
+                contentKey = { it.size to it.lastOrNull() },
+                modifier = Modifier.fillMaxSize().padding(pad),
                 transitionSpec = {
-                    if (targetState != null && initialState == null || (stack.size > 0 && targetState != null && initialState != null && targetState != initialState))
-                        (slideInHorizontally(tween(260)) { it / 4 } + fadeIn(tween(260))) togetherWith fadeOut(tween(160))
-                    else fadeIn(tween(220)) togetherWith (slideOutHorizontally(tween(220)) { it / 4 } + fadeOut(tween(200)))
+                    when (navigationDirection(initialState.size, targetState.size)) {
+                        NavigationDirection.FORWARD ->
+                            (slideInHorizontally(tween(DkordMotion.SCREEN, easing = DkordMotion.easing)) { it / 10 } + fadeIn(tween(DkordMotion.CONTENT))) togetherWith fadeOut(tween(DkordMotion.QUICK))
+                        NavigationDirection.BACK ->
+                            fadeIn(tween(DkordMotion.CONTENT)) togetherWith (slideOutHorizontally(tween(DkordMotion.SCREEN, easing = DkordMotion.easing)) { it / 10 } + fadeOut(tween(DkordMotion.CONTENT)))
+                        NavigationDirection.FADE -> fadeIn(tween(DkordMotion.CONTENT)) togetherWith fadeOut(tween(DkordMotion.QUICK))
+                    }
                 },
                 label = "dest",
-            ) { dest ->
-                when (dest) {
-                    null -> TabContent(tab, ::say, { push(Dest.Settings) }, ::push, ::onItem, ::play, { menuTrack = it })
+            ) { entries ->
+                when (val dest = entries.lastOrNull()) {
+                    null -> TabContent(tab, savedTabs, ::say, { push(Dest.Settings) }, ::push, ::onItem, ::play, { menuTrack = it })
                     is Dest.Detail -> DetailScreen(dest.toItem(), ::pop, ::onItem, ::play, { menuTrack = it }, { pickTracks = it })
                     is Dest.Playlist -> LocalPlaylistScreen(dest.id, ::pop, ::play) { menuTrack = it }
                     Dest.Liked -> LikedScreen(::pop, ::play) { menuTrack = it }
                     Dest.Recent -> RecentScreen(::pop, ::play) { menuTrack = it }
                     Dest.Settings -> SettingsScreen(::pop, { push(Dest.Logs) }, ::say)
-                    Dest.ListenTogether -> ListenTogetherScreen(::pop)
+                    Dest.ListenTogether -> ListenTogetherScreen(onBack = ::pop, onOpenPlayer = { pop(); playerOpen = true }, onMessage = ::say)
                     Dest.Logs -> DebugLogScreen(::pop, ::say)
                     is Dest.Video -> VideoScreen(dest.id, dest.title, ::pop)
                 }
@@ -154,10 +165,12 @@ fun App() {
         // Full player slides over everything, including bottom bar.
         AnimatedVisibility(
             playerOpen && state.current != null,
-            enter = slideInVertically(tween(300)) { it } + fadeIn(),
-            exit = slideOutVertically(tween(250)) { it } + fadeOut(),
+            enter = slideInVertically(tween(DkordMotion.SHEET, easing = DkordMotion.easing)) { it } + fadeIn(tween(DkordMotion.CONTENT)),
+            exit = slideOutVertically(tween(DkordMotion.SCREEN, easing = DkordMotion.easing)) { it } + fadeOut(tween(DkordMotion.CONTENT)),
         ) { FullPlayer(state, onClose = { playerOpen = false }, onAddToPlaylist = { pickTracks = listOf(it) }, onPlayVideo = { playerOpen = false; push(Dest.Video(it.id, it.title)) }, onListenTogether = { playerOpen = false; push(Dest.ListenTogether) }) }
     }
+
+    ObserveAppUpdates()
 
     menuTrack?.let { t -> TrackMenu(t, onDismiss = { menuTrack = null }, onAddToPlaylist = { pickTracks = listOf(it) }) }
     pickTracks?.let { PlaylistPicker(it, onDismiss = { pickTracks = null }, onResult = ::say) }
@@ -175,6 +188,7 @@ private val tabs = listOf(
 @Composable
 private fun TabContent(
     tab: Tab,
+    savedTabs: SaveableStateHolder,
     say: (String) -> Unit,
     openSettings: () -> Unit,
     push: (Dest) -> Unit,
@@ -184,24 +198,36 @@ private fun TabContent(
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(R.drawable.logo), null, Modifier.size(32.dp).clip(androidx.compose.foundation.shape.CircleShape))
-                        Text(stringResource(R.string.app_title), Modifier.padding(start = 10.dp))
-                    }
-                },
-                actions = { IconButton(openSettings) { Icon(Icons.Default.Settings, stringResource(R.string.settings)) } },
-            )
+            Column {
+                TopAppBar(
+                    title = {
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(R.drawable.logo), null, Modifier.size(32.dp).clip(androidx.compose.foundation.shape.CircleShape))
+                            Text(stringResource(R.string.app_title), Modifier.padding(start = 10.dp))
+                        }
+                    },
+                    actions = { IconButton(openSettings) { Icon(Icons.Default.Settings, stringResource(R.string.settings)) } },
+                )
+                HomeUpdateNotice(visible = tab == Tab.HOME, onOpenSettings = openSettings)
+            }
         },
     ) { pad ->
-        val m = Modifier.padding(pad)
-        // Each tab keeps its own ViewModel/scroll because its composable is keyed by tab and saved state lives in the ViewModelStore.
-        when (tab) {
-            Tab.HOME -> HomeScreen(onItem, onPlay, m)
-            Tab.SEARCH -> SearchScreen(onItem, onPlay, onMenu, m)
-            Tab.LIBRARY -> LibraryScreen({ push(Dest.Playlist(it)) }, { push(Dest.Liked) }, { push(Dest.Recent) }, onItem, say, m)
-            Tab.DOWNLOADS -> DownloadsScreen(onPlay, onMenu, m)
+        AnimatedContent(
+            targetState = tab,
+            modifier = Modifier.fillMaxSize().padding(pad),
+            transitionSpec = { fadeIn(tween(DkordMotion.CONTENT)) togetherWith fadeOut(tween(DkordMotion.QUICK)) },
+            label = "tab",
+        ) { selected ->
+            // The holder lives above destination transitions, preserving tab scroll/filter state.
+            savedTabs.SaveableStateProvider(selected.name) {
+                val m = Modifier.fillMaxSize()
+                when (selected) {
+                    Tab.HOME -> HomeScreen(onItem, onPlay, m)
+                    Tab.SEARCH -> SearchScreen(onItem, onPlay, onMenu, m)
+                    Tab.LIBRARY -> LibraryScreen({ push(Dest.Playlist(it)) }, { push(Dest.Liked) }, { push(Dest.Recent) }, onItem, say, m)
+                    Tab.DOWNLOADS -> DownloadsScreen(onPlay, onMenu, m)
+                }
+            }
         }
     }
 }

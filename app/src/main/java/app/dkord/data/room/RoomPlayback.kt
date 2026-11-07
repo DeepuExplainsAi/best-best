@@ -23,3 +23,8 @@ fun roomMessage(state: RoomPlaybackState, timestamp: Long): RoomMessage? = state
         state.playing, timestamp, state.queue.drop((state.queueIndex + 1).coerceAtLeast(0))
             .filter { it.id != track.id }.take(RoomCodec.MAX_QUEUE).map(RoomTrack::fromTrack))
 }
+
+/** Related autoplay may append a local suffix; do not restart the same song on every heartbeat. */
+internal fun roomQueueMatches(state: RoomPlaybackState, expected: List<Track>): Boolean =
+    expected.isNotEmpty() && state.current?.id == expected.first().id &&
+        state.queue.drop(state.queueIndex.coerceAtLeast(0)).take(expected.size).map { it.id } == expected.map { it.id }

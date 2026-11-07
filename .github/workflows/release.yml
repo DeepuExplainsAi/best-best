@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag matching app versionName (for example v0.5.0)'
+        description: 'Release tag matching app versionName (for example v0.6.0)'
         required: true
         type: string
 
@@ -14,6 +14,7 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     env:
       TAG: ${{ inputs.tag }}
     steps:
@@ -31,18 +32,46 @@ jobs:
               sys.exit('Release tag must match app versionName: expected ' + expected)
           print('Release tag matches app versionName: ' + expected)
           PY
+      - name: Run resource, app-contract and release-guard regressions
+        run: python3 -B -m unittest discover -s .github/scripts -p 'test_*.py' -v
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 21
       - uses: gradle/actions/setup-gradle@v6
       - run: chmod +x gradlew
-      - name: Stable signing key
+      - name: Require the existing stable signing key
         env:
           KS: ${{ secrets.DKORD_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.DKORD_KEYSTORE_PASS }}
         run: |
-          if [ -n "$KS" ]; then echo "$KS" | base64 -d > "$RUNNER_TEMP/dkord.p12"; echo "DKORD_KEYSTORE=$RUNNER_TEMP/dkord.p12" >> "$GITHUB_ENV"; echo "DKORD_KEYSTORE_PASS=${{ secrets.DKORD_KEYSTORE_PASS }}" >> "$GITHUB_ENV"; fi
-      - run: ./gradlew testDebugUnitTest assembleDebug --stacktrace
+          if [ -z "$KS" ] || [ -z "$KS_PASS" ]; then
+            echo "::error::Existing stable signing secrets are required. Refusing to publish a default-debug-key APK."
+            exit 1
+          fi
+          umask 077
+          keystore="$RUNNER_TEMP/dkord.p12"
+          printf '%s' "$KS" | base64 --decode > "$keystore"
+          test -s "$keystore"
+          keytool -list -storetype pkcs12 -keystore "$keystore" -alias dkord -storepass:env KS_PASS > /dev/null
+          delimiter="DKORD_PASS_$(python3 -c 'import uuid; print(uuid.uuid4().hex)')"
+          {
+            printf 'DKORD_KEYSTORE=%s\n' "$keystore"
+            printf 'DKORD_KEYSTORE_PASS<<%s\n' "$delimiter"
+            printf '%s\n' "$KS_PASS"
+            printf '%s\n' "$delimiter"
+          } >> "$GITHUB_ENV"
+      - name: Run the full Android unit suite and build the APK
+        run: ./gradlew testDebugUnitTest assembleDebug --stacktrace
+      - name: Upload Android unit-test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-unit-test-reports
+          path: |
+            app/build/test-results/testDebugUnitTest/
+            app/build/reports/tests/testDebugUnitTest/
+          if-no-files-found: ignore
       - name: Verify and prepare release APK
         run: |
           shopt -s nullglob
@@ -54,17 +83,33 @@ jobs:
           release_apk="$RUNNER_TEMP/Dkord-${TAG}.apk"
           cp -- "${apks[0]}" "$release_apk"
           echo "RELEASE_APK=$release_apk" >> "$GITHUB_ENV"
+      - name: Verify install-over compatibility with the published APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          previous_tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq '.tagName')
+          if [ "$previous_tag" = "$TAG" ]; then
+            echo "::error::This version is already the latest release. Refusing to overwrite it."
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/previous-apk"
+          gh release download "$previous_tag" --repo "$GITHUB_REPOSITORY" \
+            --pattern '*.apk' --dir "$RUNNER_TEMP/previous-apk"
+          python3 -B .github/scripts/verify_apk_update.py
       - name: Create latest release with APK
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cat > "$RUNNER_TEMP/release-notes.md" <<'NOTES'
-          Dkord v0.5.0
-
+          printf 'Dkord %s\n\n' "$TAG" > "$RUNNER_TEMP/release-notes.md"
+          cat >> "$RUNNER_TEMP/release-notes.md" <<'NOTES'
+          - Compact, non-modal Home update notice with Update / Later, direct latest-version downloads, and live downloaded / total / remaining MB in Settings.
+          - English interface by default on every phone; choose English or Hindi explicitly in Settings.
+          - Verified update downloads and the Android system installer; no uninstall or signing-key change.
+          - Collapsed-by-default New Releases with category filters and Last 24 hours / 7 days / 10 days windows, album discovery and publication-date metadata checks.
+          - Short screen, tab, panel and press animations while preserving tab state and the existing playback queue.
           - Share songs from the full player or track menu with a YouTube Music link.
           - Choliwood - Popular and Choliwood - Latest shelves on Home.
-          - New Releases with Last 24 hours / Last 7 days filters, upload-date checks and a 30-minute memory cache.
-          - Listen Together: create/share/join rooms, manual sync and optional automatic following through the public ntfy.sh relay. Audio stays on each phone; anyone with the code can access the room, and room messages are not end-to-end encrypted.
+          - Listen Together: numbered create / share / join / sync instructions, code copy/share, multiple friends, reconnects and optional Follow host controls. Technical transport/privacy details are in the repository README.
           - Music-only anonymous YouTube Music Radio autoplay with songs-search fallback.
 
           Install the APK over your existing Dkord app to keep playlists, likes, downloads and settings (same package and signing key).

@@ -6,6 +6,7 @@ import app.dkord.core.Track
 enum class ReleaseWindow(val durationMs: Long) {
     LAST_24_HOURS(24L * 60 * 60 * 1000),
     LAST_7_DAYS(7L * 24 * 60 * 60 * 1000),
+    LAST_10_DAYS(10L * 24 * 60 * 60 * 1000),
 }
 
 data class DatedTrack(val track: Track, val uploadedAtMs: Long)
