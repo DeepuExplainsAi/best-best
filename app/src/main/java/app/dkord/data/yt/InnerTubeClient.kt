@@ -32,9 +32,20 @@ class InnerTubeClient(
             continuation?.let { put("continuation", it) }
         }
 
+    /** Music radio never reads or sends a sign-in session, even if one exists for other calls. */
+    suspend fun next(videoId: String): JsonElement =
+        call("next", anonymous = true) {
+            put("videoId", videoId)
+            put("playlistId", "RDAMVM$videoId")
+            put("params", "wAEB")
+            put("isAudioOnly", true)
+            put("enablePersistentPlaylistPanel", true)
+            put("tunerSettingValue", "AUTOMIX_SETTING_NORMAL")
+        }
+
     suspend fun accountMenu(): JsonElement = call("account/account_menu") {}
 
-    private suspend fun call(endpoint: String, body: kotlinx.serialization.json.JsonObjectBuilder.() -> Unit): JsonElement =
+    private suspend fun call(endpoint: String, anonymous: Boolean = false, body: kotlinx.serialization.json.JsonObjectBuilder.() -> Unit): JsonElement =
         withContext(Dispatchers.IO) {
             val loc = locale()
             val payload = buildJsonObject {
@@ -46,7 +57,7 @@ class InnerTubeClient(
                 })
                 body()
             }
-            val authHeaders = SapisidHash.headers(cookies.cookies())
+            val authHeaders = if (anonymous) emptyMap() else SapisidHash.headers(cookies.cookies())
             val req = Request.Builder().url("$BASE/$endpoint?prettyPrint=false")
                 .header("User-Agent", WEB_UA)
                 .header("Origin", SapisidHash.ORIGIN)

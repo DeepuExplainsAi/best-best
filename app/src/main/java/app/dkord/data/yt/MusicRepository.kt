@@ -43,16 +43,22 @@ class MusicRepository(private val client: InnerTubeClient) {
         SearchResult(page.items.mapNotNull(::mapItem), page.nextPage?.let { SearchCursor(cursor.query, cursor.filter, it) })
     }
 
-    /** Songs related to [track] for autoplay: the extractor's related list, else a search by artist and title. */
+    /**
+     * Autoplay: anonymous YouTube Music Radio for [track], preserving its recommendation order.
+     * Falls back to the YouTube Music "songs" search if no usable radio songs remain after filtering.
+     * The plain youtube.com watch-page related list is NOT used (it returns vlogs/normal videos).
+     */
     suspend fun related(track: Track): List<Track> = withContext(Dispatchers.IO) {
-        val fromRelated = runCatching {
-            org.schabi.newpipe.extractor.stream.StreamInfo.getInfo(ServiceList.YouTube, "https://www.youtube.com/watch?v=${track.id}")
-                .relatedItems.filterIsInstance<StreamInfoItem>().mapNotNull(::mapItem).mapNotNull { it.track }
-        }.getOrDefault(emptyList())
-        val songs = fromRelated.ifEmpty {
-            runCatching { search("${track.artist} ${track.title}", SearchFilter.SONGS).items.mapNotNull { it.track } }.getOrDefault(emptyList())
+        fun usable(songs: List<Track>) = songs.distinctBy { it.id }.filter {
+            it.id.isNotBlank() && it.title.isNotBlank() && it.id != track.id &&
+                (it.durationSec == 0L || it.durationSec in 60..720)
         }
-        songs.filter { it.id != track.id && it.durationSec in 30..900 }
+
+        val radio = usable(runCatching { MusicParser.parseWatchNext(client.next(track.id)) }.getOrDefault(emptyList()))
+        radio.ifEmpty {
+            usable(runCatching { search("${track.artist} ${track.title}", SearchFilter.SONGS).items.mapNotNull { it.track } }
+                .getOrDefault(emptyList()))
+        }
     }
 
     // ---- Browse: InnerTube WEB_REMIX (personalised when signed in) ----
