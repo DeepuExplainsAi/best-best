@@ -1,14 +1,12 @@
 name: Release APK
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag (e.g. v0.1.0)'
+        description: 'Release tag matching app versionName (for example v0.5.0)'
         required: true
+        type: string
 
 permissions:
   contents: write
@@ -16,8 +14,23 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag }}
     steps:
       - uses: actions/checkout@v7
+      - name: Validate release tag against app version
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, re, sys
+          text = pathlib.Path('app/build.gradle.kts').read_text()
+          match = re.search(r'^\s*versionName\s*=\s*"([^"]+)"\s*$', text, re.MULTILINE)
+          if not match:
+              sys.exit('Could not read versionName from app/build.gradle.kts')
+          expected = 'v' + match.group(1)
+          if os.environ['TAG'] != expected:
+              sys.exit('Release tag must match app versionName: expected ' + expected)
+          print('Release tag matches app versionName: ' + expected)
+          PY
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -29,14 +42,32 @@ jobs:
           KS: ${{ secrets.DKORD_KEYSTORE_B64 }}
         run: |
           if [ -n "$KS" ]; then echo "$KS" | base64 -d > "$RUNNER_TEMP/dkord.p12"; echo "DKORD_KEYSTORE=$RUNNER_TEMP/dkord.p12" >> "$GITHUB_ENV"; echo "DKORD_KEYSTORE_PASS=${{ secrets.DKORD_KEYSTORE_PASS }}" >> "$GITHUB_ENV"; fi
-      - run: ./gradlew assembleDebug --stacktrace
-      - name: Create release with APK
+      - run: ./gradlew testDebugUnitTest assembleDebug --stacktrace
+      - name: Verify and prepare release APK
+        run: |
+          shopt -s nullglob
+          apks=(app/build/outputs/apk/debug/*.apk)
+          if [ "${#apks[@]}" -ne 1 ] || [ ! -s "${apks[0]}" ]; then
+            echo "Expected exactly one nonempty debug APK after successful tests and build."
+            exit 1
+          fi
+          release_apk="$RUNNER_TEMP/Dkord-${TAG}.apk"
+          cp -- "${apks[0]}" "$release_apk"
+          echo "RELEASE_APK=$release_apk" >> "$GITHUB_ENV"
+      - name: Create latest release with APK
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
-          cp app/build/outputs/apk/debug/*.apk "Dkord-${TAG}.apk"
-          gh release create "$TAG" "Dkord-${TAG}.apk" \
-            --title "Dkord ${TAG}" \
-            --notes "Dkord ${TAG}: free, open-source YouTube Music client for Android. Download Dkord-${TAG}.apk below and install it on your phone (allow 'Install unknown apps' if Android asks)." \
-            --target "${GITHUB_SHA}"
+          cat > "$RUNNER_TEMP/release-notes.md" <<'NOTES'
+          Dkord v0.5.0
+
+          - Share songs from the full player or track menu with a YouTube Music link.
+          - Choliwood - Popular and Choliwood - Latest shelves on Home.
+          - New Releases with Last 24 hours / Last 7 days filters, upload-date checks and a 30-minute memory cache.
+          - Listen Together: create/share/join rooms, manual sync and optional automatic following through the public ntfy.sh relay. Audio stays on each phone; anyone with the code can access the room, and room messages are not end-to-end encrypted.
+          - Music-only anonymous YouTube Music Radio autoplay with songs-search fallback.
+
+          Install the APK over your existing Dkord app to keep playlists, likes, downloads and settings (same package and signing key).
+          NOTES
+          gh release create "$TAG" "$RELEASE_APK" --latest --target "$GITHUB_SHA" \
+            --title "Dkord ${TAG}" --notes-file "$RUNNER_TEMP/release-notes.md"
