@@ -154,7 +154,7 @@ fun App() {
                     Dest.Liked -> LikedScreen(::pop, ::play) { menuTrack = it }
                     Dest.Recent -> RecentScreen(::pop, ::play) { menuTrack = it }
                     Dest.Settings -> SettingsScreen(::pop, { push(Dest.Logs) }, ::say)
-                    Dest.ListenTogether -> ListenTogetherScreen(::pop)
+                    Dest.ListenTogether -> ListenTogetherScreen(onBack = ::pop, onOpenPlayer = { pop(); playerOpen = true }, onMessage = ::say)
                     Dest.Logs -> DebugLogScreen(::pop, ::say)
                     is Dest.Video -> VideoScreen(dest.id, dest.title, ::pop)
                 }

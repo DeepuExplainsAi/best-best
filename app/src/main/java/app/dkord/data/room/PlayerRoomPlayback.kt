@@ -16,8 +16,7 @@ class PlayerRoomPlayback(private val player: PlayerController) : RoomPlayback {
         val tracks = listOf(RoomTrack(message.videoId, message.title, message.artist, message.thumbnail).toTrack()) +
             message.queue.map { it.toTrack() }
         val state = player.state.value
-        val localQueue = state.queue.drop(state.queueIndex.coerceAtLeast(0))
-        val replace = state.current?.id != message.videoId || localQueue.map { it.id } != tracks.map { it.id }
+        val replace = !roomQueueMatches(snapshot(state), tracks)
         val position = if (!replace && state.durationMs > 0) positionMs.coerceAtMost((state.durationMs - 1).coerceAtLeast(0)) else positionMs
         if (replace) player.play(tracks, 0)
         if (replace || abs(state.positionMs - position) > 1_500) player.seekTo(position)
