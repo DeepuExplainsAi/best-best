@@ -189,4 +189,5 @@
     <string name="room_rate_limit">The room relay is rate limiting requests. Wait a minute and retry.</string>
     <string name="room_message_error">Room state could not be shared safely. Try another song and retry.</string>
     <string name="room_playback_error">Could not sync playback. Try Sync &amp; play again.</string>
+    <string name="choliwood_name">Choliwood</string>
 </resources>

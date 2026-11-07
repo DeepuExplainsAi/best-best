@@ -139,4 +139,5 @@
     <string name="room_rate_limit">रूम रिले अनुरोध सीमित कर रहा है। एक मिनट रुककर फिर कोशिश करें।</string>
     <string name="room_message_error">रूम की स्थिति सुरक्षित रूप से शेयर नहीं हो सकी। दूसरा गाना चुनकर फिर कोशिश करें।</string>
     <string name="room_playback_error">प्लेबैक सिंक नहीं हो सका। फिर सिंक करें और चलाएँ दबाएँ।</string>
+    <string name="choliwood_name">Choliwood</string>
 </resources>
