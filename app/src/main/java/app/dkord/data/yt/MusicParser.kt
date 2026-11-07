@@ -183,6 +183,32 @@ object MusicParser {
 
     private val DURATION = Regex("""\d{1,2}(:\d{2}){1,2}""")
 
+    /**
+     * Playable music rows from a `next` response, in radio order.
+     * Audio-only playback and a playlist row alone do not prove a video is music: require YouTube
+     * Music's audio-track / official-music-video classification. Unknown types fail closed so the
+     * repository can fall back to the songs search instead of queueing an ordinary video.
+     */
+    fun parseWatchNext(root: JsonElement): List<Track> =
+        root.find("playlistPanelRenderer").at("contents").list().mapNotNull { row ->
+            val r = row.at("playlistPanelVideoRenderer")
+                ?: row.at("playlistPanelVideoWrapperRenderer", "primaryRenderer", "playlistPanelVideoRenderer")
+                ?: return@mapNotNull null
+            if (r.at("unplayableText") != null || r.at("isPlayable")?.toString() == "false") return@mapNotNull null
+            val videoType = r.at("navigationEndpoint", "watchEndpoint", "watchEndpointMusicSupportedConfigs",
+                "watchEndpointMusicConfig", "musicVideoType").str()
+            if (videoType != "MUSIC_VIDEO_TYPE_ATV" && videoType != "MUSIC_VIDEO_TYPE_OMV") return@mapNotNull null
+            val id = r.at("videoId").str()?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val title = r.at("title").runsText()
+                .ifBlank { r.at("title", "simpleText").str().orEmpty() }
+                .ifBlank { return@mapNotNull null }
+            val meta = r.at("longBylineText").runs().mapNotNull { it.at("text").str() }
+            val artist = meta.firstOrNull { it.trim() !in setOf("•", "·", "") }.orEmpty()
+            val duration = r.at("lengthText").runsText()
+                .ifBlank { r.at("lengthText", "simpleText").str().orEmpty() }
+            Track(id, title, artist, null, parseDuration(duration), r.at("thumbnail").lastThumbnail())
+        }
+
     fun parseDuration(s: String): Long {
         if (!DURATION.matches(s.trim())) return 0
         return s.trim().split(":").fold(0L) { acc, p -> acc * 60 + p.toLong() }
