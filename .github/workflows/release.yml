@@ -37,11 +37,27 @@ jobs:
           java-version: 21
       - uses: gradle/actions/setup-gradle@v6
       - run: chmod +x gradlew
-      - name: Stable signing key
+      - name: Require the existing stable signing key
         env:
           KS: ${{ secrets.DKORD_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.DKORD_KEYSTORE_PASS }}
         run: |
-          if [ -n "$KS" ]; then echo "$KS" | base64 -d > "$RUNNER_TEMP/dkord.p12"; echo "DKORD_KEYSTORE=$RUNNER_TEMP/dkord.p12" >> "$GITHUB_ENV"; echo "DKORD_KEYSTORE_PASS=${{ secrets.DKORD_KEYSTORE_PASS }}" >> "$GITHUB_ENV"; fi
+          if [ -z "$KS" ] || [ -z "$KS_PASS" ]; then
+            echo "::error::Existing stable signing secrets are required. Refusing to publish a default-debug-key APK."
+            exit 1
+          fi
+          umask 077
+          keystore="$RUNNER_TEMP/dkord.p12"
+          printf '%s' "$KS" | base64 --decode > "$keystore"
+          test -s "$keystore"
+          keytool -list -storetype pkcs12 -keystore "$keystore" -alias dkord -storepass:env KS_PASS > /dev/null
+          delimiter="DKORD_PASS_$(python3 -c 'import uuid; print(uuid.uuid4().hex)')"
+          {
+            printf 'DKORD_KEYSTORE=%s\n' "$keystore"
+            printf 'DKORD_KEYSTORE_PASS<<%s\n' "$delimiter"
+            printf '%s\n' "$KS_PASS"
+            printf '%s\n' "$delimiter"
+          } >> "$GITHUB_ENV"
       - run: ./gradlew testDebugUnitTest assembleDebug --stacktrace
       - name: Verify and prepare release APK
         run: |
@@ -54,6 +70,68 @@ jobs:
           release_apk="$RUNNER_TEMP/Dkord-${TAG}.apk"
           cp -- "${apks[0]}" "$release_apk"
           echo "RELEASE_APK=$release_apk" >> "$GITHUB_ENV"
+      - name: Verify install-over compatibility with the published APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          previous_tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq '.tagName')
+          if [ "$previous_tag" = "$TAG" ]; then
+            echo "::error::This version is already the latest release. Refusing to overwrite it."
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/previous-apk"
+          gh release download "$previous_tag" --repo "$GITHUB_REPOSITORY" \
+            --pattern '*.apk' --dir "$RUNNER_TEMP/previous-apk"
+          python3 - <<'PY'
+          import os, pathlib, re, subprocess, sys
+          def fail(message):
+              sys.exit('Update compatibility check failed: ' + message)
+          old_apks = list((pathlib.Path(os.environ['RUNNER_TEMP']) / 'previous-apk').glob('*.apk'))
+          if len(old_apks) != 1 or old_apks[0].stat().st_size == 0:
+              fail('expected exactly one nonempty APK from the previous release')
+          old_apk = old_apks[0]
+          new_apk = pathlib.Path(os.environ['RELEASE_APK'])
+          sdk = os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT')
+          if not sdk:
+              fail('Android SDK was not found')
+          tools = list((pathlib.Path(sdk) / 'build-tools').glob('*/apksigner'))
+          if not tools:
+              fail('apksigner was not found')
+          signer = max(tools, key=lambda p: tuple(map(int, re.findall(r'\d+', p.parent.name))))
+          aapt = signer.parent / 'aapt2'
+          if not aapt.is_file():
+              aapt = signer.parent / 'aapt'
+          if not aapt.is_file():
+              fail('aapt2/aapt was not found')
+          def run(args):
+              result = subprocess.run([str(x) for x in args], capture_output=True, text=True)
+              if result.returncode:
+                  fail('APK verification tool failed; release will not be published')
+              return result.stdout
+          def certificates(apk):
+              output = run([signer, 'verify', '--print-certs', apk])
+              digests = re.findall(r'Signer #\d+ certificate SHA-256 digest: ([0-9a-fA-F]{64})', output)
+              if not digests:
+                  fail('no verified signing certificate was found')
+              return sorted(value.lower() for value in digests)
+          if certificates(old_apk) != certificates(new_apk):
+              fail('signing certificates differ; do not rotate or replace the existing signing key')
+          def metadata(apk):
+              output = run([aapt, 'dump', 'badging', apk])
+              match = re.search(r"^package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'", output, re.MULTILINE)
+              if not match:
+                  fail('APK package/version metadata was not found')
+              return match.group(1), int(match.group(2)), match.group(3)
+          old_package, old_code, _ = metadata(old_apk)
+          new_package, new_code, new_version = metadata(new_apk)
+          if old_package != 'app.dkord' or new_package != old_package:
+              fail('applicationId must remain app.dkord')
+          if new_code <= old_code:
+              fail('versionCode must be higher than the published APK')
+          if 'v' + new_version != os.environ['TAG']:
+              fail('built APK versionName does not match the release tag')
+          print(f'Verified app.dkord update: versionCode {old_code} -> {new_code}; signing certificates match.')
+          PY
       - name: Create latest release with APK
         env:
           GH_TOKEN: ${{ github.token }}
