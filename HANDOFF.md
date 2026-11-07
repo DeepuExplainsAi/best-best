@@ -118,7 +118,7 @@ Nothing in Part 5 has been run on a phone (sandbox has no emulator). First thing
 ## Part 12 — v0.5.0 (in progress)
 - [x] A: Share in FullPlayer and the track menu. Pure `core/TrackShare.kt` formatter + unit tests; Android ACTION_SEND text/plain chooser in `ui/common/Share.kt`. English/Hindi error text and Hindi Share label added. Existing playback/download actions unchanged.
 - [x] B: Two songs-only curated shelves immediately after Bollywood Hits: Choliwood - Popular / Choliwood - Latest. Query strings use popular/new bhojpuri songs internally; English/Hindi UI labels always say Choliwood. Existing ShelfRow whole-shelf queue behavior retained. A pushed as 6d0e8a0.
-- [ ] C: Lazy, dated New Releases.
+- [x] C: Click-to-open New Releases section, 24h/7d chips. NewReleasesRepository interleaves YT Music new-releases songs with four SONGS-only searches, dedupes/caps at 40, fetches StreamInfo uploadDate with Semaphore(6), skips unknown dates, and caches dated candidates in memory for 30 min. Pure ReleaseWindow filter + tests for exact boundaries, sort/dedupe, lazy loading, concurrency/cap and TTL. This uses upload dates, not guaranteed original song release dates. B pushed as 8290a3e.
 - [ ] D: Listen Together rooms.
 - [ ] E: Manual-only build/release workflows and version bump.
 - [ ] F: Final checks / CI / handoff.

@@ -162,4 +162,8 @@
     <string name="share_failed">No app is available to share this text.</string>
     <string name="choliwood_popular">Choliwood - Popular</string>
     <string name="choliwood_latest">Choliwood - Latest</string>
+    <string name="new_releases">New Releases</string>
+    <string name="last_24_hours">Last 24 hours</string>
+    <string name="last_7_days">Last 7 days</string>
+    <string name="no_new_songs">No new songs found</string>
 </resources>

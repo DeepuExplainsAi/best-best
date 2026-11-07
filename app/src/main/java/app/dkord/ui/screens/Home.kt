@@ -119,7 +119,9 @@ fun HomeScreen(onItem: (BrowseItem) -> Unit, onPlay: (List<app.dkord.core.Track>
     PullToRefreshBox(refreshing, { vm.load(refresh = true) }, modifier.fillMaxSize()) {
         when (val p = page) {
             Load.Loading -> Loading()
-            is Load.Failed -> if (extra.isEmpty()) ErrorBox(p.error, { vm.load() }) else LazyColumn(contentPadding = PaddingValues(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            is Load.Failed -> LazyColumn(contentPadding = PaddingValues(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (extra.isEmpty()) item("home_error") { ErrorBox(p.error, { vm.load() }, Modifier.padding(8.dp)) }
+                item("new_releases") { NewReleasesSection(onItem, onPlay) }
                 if (recentShelf != null) item("recent") { ShelfRow(recentShelf, onItem, onPlay) }
                 items(extra) { ShelfRow(it, onItem, onPlay) }
             }
@@ -129,6 +131,7 @@ fun HomeScreen(onItem: (BrowseItem) -> Unit, onPlay: (List<app.dkord.core.Track>
                         items(p.value.chips) { c -> FilterChip(selected == c, { vm.select(c) }, { Text(c.title) }) }
                     }
                 }
+                if (selected == null) item("new_releases") { NewReleasesSection(onItem, onPlay) }
                 if (recentShelf != null && selected == null) item("recent") { ShelfRow(recentShelf, onItem, onPlay) }
                 items(p.value.shelves) { ShelfRow(it, onItem, onPlay) }
                 if (selected == null) items(extra) { ShelfRow(it, onItem, onPlay) }
