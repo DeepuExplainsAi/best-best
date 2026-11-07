@@ -231,4 +231,20 @@
     <string name="update_banner_version">वर्शन %1$s उपलब्ध है</string>
     <string name="update_action">अपडेट</string>
     <string name="room_attention">ध्यान दें</string>
+    <string name="search_history_title">हाल की खोजें</string>
+    <string name="search_history_empty">आपकी खोजें यहाँ दिखेंगी।</string>
+    <string name="search_submit">खोजें</string>
+    <string name="search_edit_query">खोज बदलें</string>
+    <string name="search_pin">खोज पिन करें</string>
+    <string name="search_unpin">खोज का पिन हटाएँ</string>
+    <string name="search_remove">खोज हटाएँ</string>
+    <string name="search_filter_pinned">%1$s · पिन की गई</string>
+    <string name="search_pin_limit">आप अधिकतम %1$d खोजें पिन कर सकते हैं।</string>
+    <string name="search_clear_all">सभी हटाएँ</string>
+    <string name="search_clear_title">खोज का इतिहास हटाएँ?</string>
+    <string name="search_clear_message">इस डिवाइस से हाल की और पिन की गई सभी खोजें हटाएँ?</string>
+    <string name="search_history_load_failed">सहेजी गई खोजें लोड नहीं हो सकीं।</string>
+    <string name="search_history_write_failed">खोज का इतिहास अपडेट नहीं हो सका। फिर कोशिश करें।</string>
+    <string name="search_more_failed">और नतीजे लोड नहीं हो सके।</string>
+    <string name="search_load_more">और नतीजे दिखाएँ</string>
 </resources>

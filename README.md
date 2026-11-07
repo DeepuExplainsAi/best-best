@@ -12,6 +12,16 @@ Home shows a small **Update / Later** notice, not a blocking dialog. Later defer
 
 The download is bounded and checked for size and optional release SHA-256. Before installation, the app verifies the APK's package, advertised version, increasing versionCode and installed signing certificates. Android's system installer/unknown-source permission UI completes installation. Downloads share app-lifetime state across screens/rotation; this is **not** a promise of update-download continuation after process death.
 
+## Search and saved queries
+The Search screen shows **Recent searches** below the Songs / Albums / Artists / Playlists chips when the field is empty. Only submitted searches are saved, including submitted attempts that fail offline; typing and loading more results do not add history. Searches made before this feature cannot be recovered.
+
+- Tap an entry to repeat its original query **and filter**. The pencil prefills it for editing without submitting.
+- Use its three-dot menu (or long-press) to **Pin / Unpin** or **Remove**. Up to **50** searches are kept, including at most **10** pins. Pins stay above other recents and survive ordinary history eviction.
+- **Clear all** asks for confirmation and removes both recent and pinned searches. Clearing the search input only returns to recents; it does not erase history.
+- Matching saved queries appear immediately while typing, even offline, alongside deduplicated debounced YouTube suggestions. Results keep full-list playback; pagination failures keep existing results and offer Retry. Load more is also available for pages that add no visible rows.
+
+Saved queries use a separate private on-device DataStore, persist across app restarts after the write completes, and are not included in room messages or query logs. Normal queries/suggestions still go to the existing YouTube search service; saving history adds no backend or analytics. The implementation has English and Hindi text. Validation and APK availability for this feature are recorded in `HANDOFF.md`; an existing release does not acquire these changes automatically.
+
 ## Languages
 The app interface defaults to **English even when the phone uses another language**. Choose **Settings → Appearance → App language → English / Hindi** to change it explicitly. Android 13+ per-app language choices are also honored; resetting the app-language override returns to the app's English default. Original song/artist metadata is not translated, and selecting an interface language retains the device region used for music discovery. Android-owned permission, installer and file-picker screens are controlled by Android.
 
@@ -43,7 +53,7 @@ python3 -B -m unittest discover -s .github/scripts -p 'test_*.py' -v
 
 Both GitHub Actions workflows are **manual-only**; a push does not build or publish:
 - **Build debug APK** runs the Python regressions, full Android unit suite and debug build, then uploads `dkord-debug-apk`. Without the existing signing secrets, a developer debug APK cannot update an official install.
-- **Release APK** takes a tag matching `versionName` (currently `v0.6.0`), runs the Python and full Android unit suites/build, requires the existing stable key (`DKORD_KEYSTORE_B64`, `DKORD_KEYSTORE_PASS`, alias `dkord`), and checks the actual old/new APK signatures, package and increasing versionCode. Only then does it create the tag/release page and attach the APK. No previous release is overwritten or removed. Start a **fresh run on the prepared branch**, not a re-run of old jobs.
+- **Release APK** takes a tag matching `versionName` (use a new versionName/versionCode/tag; `v0.6.0` is already published), runs the Python and full Android unit suites/build, requires the existing stable key (`DKORD_KEYSTORE_B64`, `DKORD_KEYSTORE_PASS`, alias `dkord`), and checks the actual old/new APK signatures, package and increasing versionCode. Only then does it create the tag/release page and attach the APK. No previous release is overwritten or removed. Start a **fresh run on the prepared branch**, not a re-run of old jobs.
 - Both workflows preserve Android unit-test reports as an artifact, including failed runs where reports exist. Resource/source/workflow checks are not a substitute for Android compilation, UI/device tests or a real multi-phone room session. Current validation/execution status is recorded in `HANDOFF.md`; pending tests are not claimed as passing.
 
 ## How playback works (and why it can break)

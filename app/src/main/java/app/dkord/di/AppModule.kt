@@ -6,6 +6,8 @@ import app.dkord.data.room.RoomController
 import app.dkord.data.room.RoomPlayback
 import app.dkord.data.room.RoomTransport
 import app.dkord.data.releases.NewReleasesRepository
+import app.dkord.data.search.PreferencesSearchHistoryStorage
+import app.dkord.data.search.SearchHistoryRepository
 import app.dkord.data.auth.AuthStore
 import app.dkord.data.db.AppDatabase
 import app.dkord.data.download.DownloadManager
@@ -38,6 +40,7 @@ val appModule = module {
     single { StreamModule(get()) } bind StreamResolver::class
     single { InnerTubeClient(get<AuthStore>()) }
     single { MusicRepository(get()) }
+    single { SearchHistoryRepository(PreferencesSearchHistoryStorage(androidContext())) }
     single { NewReleasesRepository.fromMusic(get()) }
     single { SettingsRepository(androidContext()) }
     single { AudioCache(androidContext(), get<SettingsRepository>().settings.value.cacheMb * 1024L * 1024L) }

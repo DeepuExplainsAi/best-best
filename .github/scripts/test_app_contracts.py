@@ -113,6 +113,48 @@ class AppContractsTest(unittest.TestCase):
         releases = read("app/src/main/java/app/dkord/ui/screens/NewReleases.kt")
         self.assertRegex(releases, r"expanded\s+by\s+rememberSaveable\s*\{\s*mutableStateOf\(false\)")
 
+    def test_search_history_uses_private_local_singleton_storage(self):
+        store = read("app/src/main/java/app/dkord/data/search/PreferencesSearchHistoryStorage.kt")
+        module = read("app/src/main/java/app/dkord/di/AppModule.kt")
+        self.assertIn('preferencesDataStore(name = "search-history")', store)
+        self.assertIn("context.applicationContext.searchHistoryStore", store)
+        self.assertIn("store.edit", store)
+        self.assertIn("single { SearchHistoryRepository(PreferencesSearchHistoryStorage(androidContext())) }", module)
+        manifest = ET.parse(MAIN / "AndroidManifest.xml").getroot()
+        self.assertEqual("false", manifest.find("application").attrib[ANDROID + "allowBackup"])
+        for filename in ("SearchHistory.kt", "SearchHistoryRepository.kt", "PreferencesSearchHistoryStorage.kt"):
+            source = read("app/src/main/java/app/dkord/data/search/" + filename)
+            self.assertNotRegex(source, r"https?://|\b(?:DebugLog|Log|OkHttpClient)\.")
+
+    def test_recent_search_actions_are_wired_and_clear_all_requires_confirmation(self):
+        ui = read("app/src/main/java/app/dkord/ui/screens/Search.kt")
+        app = read("app/src/main/java/app/dkord/ui/App.kt")
+        self.assertIn("query.isBlank() -> SavedSearches", ui)
+        for action in ("saved::togglePinned", "saved::remove", "vm.repeat(entry)", "vm.edit(entry)"):
+            self.assertIn(action, ui)
+        self.assertIn("if (confirmClear) AlertDialog(", ui)
+        self.assertIn("search_clear_message", ui)
+        self.assertEqual(1, ui.count("saved.clearAll()"))
+        self.assertLess(ui.index("confirmButton ="), ui.index("saved.clearAll()"))
+        self.assertIn("onMessage = say", app)
+
+    def test_only_submissions_record_history_and_original_search_and_queue_paths_remain(self):
+        controller = read("app/src/main/java/app/dkord/ui/search/SearchController.kt")
+        source = read("app/src/main/java/app/dkord/data/search/MusicSearchSource.kt")
+        ui = read("app/src/main/java/app/dkord/ui/screens/Search.kt")
+        self.assertEqual(1, controller.count("history.record("))
+        submit = controller.index("    fun search(")
+        record = controller.index("history.record(")
+        self.assertLess(submit, record)
+        self.assertLess(record, controller.index("searchJob = scope.launch", submit))
+        for call in ("music.suggestions(query)", "music.search(query, filter)", "music.searchMore("):
+            self.assertIn(call, source)
+        self.assertIn("result.value.mapNotNull { it.track }", ui)
+        self.assertIn("onPlay(songs, songs.indexOfFirst", ui)
+        self.assertIn("else onItem(item)", ui)
+        self.assertIn("vm.loadMore(retry = true)", ui)
+        self.assertIn("results == null -> LazyColumn", ui)
+
     def test_all_junit_annotations_have_function_declarations(self):
         for path in (ROOT / "app/src/test").rglob("*.kt"):
             source = path.read_text()
