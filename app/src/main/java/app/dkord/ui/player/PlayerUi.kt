@@ -2,7 +2,6 @@ package app.dkord.ui.player
 
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -27,6 +26,11 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.filled.Share
+import app.dkord.ui.common.shareTrack
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Bedtime
@@ -70,7 +74,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -82,6 +85,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import app.dkord.R
+import app.dkord.data.room.RoomController
 import app.dkord.core.Track
 import app.dkord.data.lyrics.LrcParser
 import app.dkord.data.lyrics.Lyrics
@@ -137,13 +141,17 @@ private enum class Panel { ART, LYRICS, QUEUE }
 /** Full-screen player. Swipe down closes; swipe sideways on the art changes track. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FullPlayer(state: PlayerUiState, onClose: () -> Unit, onAddToPlaylist: (Track) -> Unit, onPlayVideo: (Track) -> Unit) {
+fun FullPlayer(state: PlayerUiState, onClose: () -> Unit, onAddToPlaylist: (Track) -> Unit, onPlayVideo: (Track) -> Unit, onListenTogether: () -> Unit) {
     val actions: Actions = koinInject()
     val settingsRepo: app.dkord.data.settings.SettingsRepository = koinInject()
     val controller = actions.player
+    val rooms: RoomController = koinInject()
+    val seek: (Long) -> Unit = { position -> controller.seekTo(position); rooms.seeked(position) }
+    val shareContext = LocalContext.current
     val sleep by controller.sleep.collectAsState()
     val likedIds by remember { actions.library.likedIds() }.collectAsState(emptySet())
     val track = state.current
+    var moreOpen by remember { mutableStateOf(false) }
     var panel by rememberSaveable { mutableStateOf(Panel.ART) }
     var sheet by rememberSaveable { mutableStateOf("") } // "", "speed", "sleep"
     var dragY by remember { mutableFloatStateOf(0f) }
@@ -164,11 +172,19 @@ fun FullPlayer(state: PlayerUiState, onClose: () -> Unit, onAddToPlaylist: (Trac
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClose) { Icon(Icons.Default.KeyboardArrowDown, stringResource(R.string.close)) }
                 Spacer(Modifier.weight(1f))
+                IconButton({ shareTrack(shareContext, track) }) { Icon(Icons.Default.Share, stringResource(R.string.share)) }
                 IconButton({ panel = if (panel == Panel.LYRICS) Panel.ART else Panel.LYRICS }) {
                     Icon(Icons.Default.Lyrics, stringResource(R.string.lyrics), tint = if (panel == Panel.LYRICS) MaterialTheme.colorScheme.primary else LocalContentColorOrDefault())
                 }
                 IconButton({ panel = if (panel == Panel.QUEUE) Panel.ART else Panel.QUEUE }) {
                     Icon(Icons.AutoMirrored.Filled.QueueMusic, stringResource(R.string.queue), tint = if (panel == Panel.QUEUE) MaterialTheme.colorScheme.primary else LocalContentColorOrDefault())
+                }
+                Box {
+                    IconButton({ moreOpen = true }) { Icon(Icons.Default.MoreVert, stringResource(R.string.more)) }
+                    DropdownMenu(moreOpen, { moreOpen = false }) {
+                        DropdownMenuItem(text = { Text(stringResource(R.string.listen_together)) },
+                            onClick = { moreOpen = false; onListenTogether() })
+                    }
                 }
             }
 
@@ -176,7 +192,7 @@ fun FullPlayer(state: PlayerUiState, onClose: () -> Unit, onAddToPlaylist: (Trac
                 AnimatedContent(panel, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "panel") { p ->
                     when (p) {
                         Panel.ART -> ArtPanel(track, controller)
-                        Panel.LYRICS -> LyricsPanel(track, state.positionMs, controller)
+                        Panel.LYRICS -> LyricsPanel(track, state.positionMs, seek)
                         Panel.QUEUE -> QueuePanel(state, controller)
                     }
                 }
@@ -198,7 +214,7 @@ fun FullPlayer(state: PlayerUiState, onClose: () -> Unit, onAddToPlaylist: (Trac
                 }
             }
 
-            SeekBar(state, controller)
+            SeekBar(state, seek)
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 IconButton(controller::toggleShuffle) { Icon(Icons.Default.Shuffle, stringResource(R.string.shuffle), tint = if (state.shuffle) MaterialTheme.colorScheme.primary else LocalContentColorOrDefault()) }
@@ -282,7 +298,7 @@ private fun ArtPanel(track: Track, controller: PlayerController) {
 }
 
 @Composable
-private fun SeekBar(state: PlayerUiState, controller: PlayerController) {
+private fun SeekBar(state: PlayerUiState, onSeek: (Long) -> Unit) {
     var scrubbing by remember { mutableStateOf(false) }
     var scrub by remember { mutableFloatStateOf(0f) }
     val dur = state.durationMs.coerceAtLeast(1)
@@ -291,7 +307,7 @@ private fun SeekBar(state: PlayerUiState, controller: PlayerController) {
         Slider(
             value = shown, valueRange = 0f..dur.toFloat(),
             onValueChange = { scrubbing = true; scrub = it },
-            onValueChangeFinished = { controller.seekTo(scrub.toLong()); scrubbing = false },
+            onValueChangeFinished = { onSeek(scrub.toLong()); scrubbing = false },
             enabled = state.durationMs > 0,
             colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color.White),
         )
@@ -303,7 +319,7 @@ private fun SeekBar(state: PlayerUiState, controller: PlayerController) {
 }
 
 @Composable
-private fun LyricsPanel(track: Track, positionMs: Long, controller: PlayerController) {
+private fun LyricsPanel(track: Track, positionMs: Long, onSeek: (Long) -> Unit) {
     val repo: LyricsRepository = koinInject()
     val result by produceState<Result<Lyrics?>?>(null, track.id) {
         value = null
@@ -328,7 +344,7 @@ private fun LyricsPanel(track: Track, positionMs: Long, controller: PlayerContro
                             line.text.ifBlank { "♪" },
                             style = MaterialTheme.typography.titleLarge,
                             color = if (i == idx) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                            modifier = Modifier.fillMaxWidth().clickable { controller.seekTo(line.timeMs) }.padding(vertical = 10.dp),
+                            modifier = Modifier.fillMaxWidth().clickable { onSeek(line.timeMs) }.padding(vertical = 10.dp),
                         )
                     }
                 }

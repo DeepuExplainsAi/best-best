@@ -24,6 +24,8 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayArrow
@@ -212,6 +214,7 @@ fun TrackMenu(track: Track, onDismiss: () -> Unit, onAddToPlaylist: (Track) -> U
     val actions: Actions = koinInject()
     val likedIds by remember { actions.library.likedIds() }.collectAsState(emptySet())
     val liked = track.id in likedIds
+    val context = LocalContext.current
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Cover(track.thumbnail, 48.dp)
@@ -225,6 +228,7 @@ fun TrackMenu(track: Track, onDismiss: () -> Unit, onAddToPlaylist: (Track) -> U
         MenuRow(Icons.Default.QueueMusic, stringResource(R.string.add_to_queue)) { actions.player.addToQueue(track); onDismiss() }
         MenuRow(if (liked) Icons.Default.Favorite else Icons.Default.FavoriteBorder, stringResource(if (liked) R.string.unlike else R.string.like)) { actions.like(track, !liked); onDismiss() }
         MenuRow(Icons.Default.PlaylistAdd, stringResource(R.string.add_to_playlist)) { onDismiss(); onAddToPlaylist(track) }
+        MenuRow(Icons.Default.Share, stringResource(R.string.share)) { shareTrack(context, track); onDismiss() }
         MenuRow(Icons.Default.Download, stringResource(R.string.download)) { actions.download(listOf(track)); onDismiss() }
         extra?.invoke()
         Spacer(Modifier.size(24.dp))

@@ -66,6 +66,7 @@ import app.dkord.ui.screens.LikedScreen
 import app.dkord.ui.screens.LocalPlaylistScreen
 import app.dkord.ui.screens.RecentScreen
 import app.dkord.ui.screens.SearchScreen
+import app.dkord.ui.screens.ListenTogetherScreen
 import app.dkord.ui.screens.SettingsScreen
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -143,6 +144,7 @@ fun App() {
                     Dest.Liked -> LikedScreen(::pop, ::play) { menuTrack = it }
                     Dest.Recent -> RecentScreen(::pop, ::play) { menuTrack = it }
                     Dest.Settings -> SettingsScreen(::pop, { push(Dest.Logs) }, ::say)
+                    Dest.ListenTogether -> ListenTogetherScreen(::pop)
                     Dest.Logs -> DebugLogScreen(::pop, ::say)
                     is Dest.Video -> VideoScreen(dest.id, dest.title, ::pop)
                 }
@@ -154,7 +156,7 @@ fun App() {
             playerOpen && state.current != null,
             enter = slideInVertically(tween(300)) { it } + fadeIn(),
             exit = slideOutVertically(tween(250)) { it } + fadeOut(),
-        ) { FullPlayer(state, onClose = { playerOpen = false }, onAddToPlaylist = { pickTracks = listOf(it) }, onPlayVideo = { playerOpen = false; push(Dest.Video(it.id, it.title)) }) }
+        ) { FullPlayer(state, onClose = { playerOpen = false }, onAddToPlaylist = { pickTracks = listOf(it) }, onPlayVideo = { playerOpen = false; push(Dest.Video(it.id, it.title)) }, onListenTogether = { playerOpen = false; push(Dest.ListenTogether) }) }
     }
 
     menuTrack?.let { t -> TrackMenu(t, onDismiss = { menuTrack = null }, onAddToPlaylist = { pickTracks = listOf(it) }) }

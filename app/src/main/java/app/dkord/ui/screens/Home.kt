@@ -2,7 +2,6 @@ package app.dkord.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,7 +12,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -77,8 +75,15 @@ class HomeViewModel(private val repo: MusicRepository) : ViewModel() {
     }
 }
 
+private val CHOLIWOOD_WORD = Regex("\\bbhojpuri\\b|भोजपुरी", RegexOption.IGNORE_CASE)
+
+/** Home section/chip branding only; never rewrites a song title, artist, or search query. */
+internal fun choliwoodShelfTitle(title: String, brand: String): String = title.replace(CHOLIWOOD_WORD, brand)
+
 private val CURATED = listOf(
     "Bollywood Hits" to "latest bollywood hit songs",
+    "dkord:choliwood:popular" to "popular bhojpuri songs",
+    "dkord:choliwood:latest" to "new bhojpuri songs",
     "Trending Punjabi" to "trending punjabi songs",
     "Romantic Hindi" to "romantic hindi songs",
     "Arijit Singh" to "arijit singh best songs",
@@ -100,7 +105,15 @@ fun HomeScreen(onItem: (BrowseItem) -> Unit, onPlay: (List<app.dkord.core.Track>
     val page by vm.page.collectAsState()
     val refreshing by vm.refreshing.collectAsState()
     val selected by vm.chip.collectAsState()
-    val extra by vm.extra.collectAsState()
+    val choliwoodName = stringResource(R.string.choliwood_name)
+    val extraShelves by vm.extra.collectAsState()
+    val extra = extraShelves.map { shelf ->
+        shelf.copy(title = when (shelf.title) {
+            "dkord:choliwood:popular" -> stringResource(R.string.choliwood_popular)
+            "dkord:choliwood:latest" -> stringResource(R.string.choliwood_latest)
+            else -> choliwoodShelfTitle(shelf.title, choliwoodName)
+        })
+    }
     val library: app.dkord.data.library.LibraryRepository = koinInject()
     val recent by remember { library.recent(15) }.collectAsState(emptyList())
     val recentShelf = recent.takeIf { it.isNotEmpty() }?.let { l ->
@@ -110,18 +123,21 @@ fun HomeScreen(onItem: (BrowseItem) -> Unit, onPlay: (List<app.dkord.core.Track>
     PullToRefreshBox(refreshing, { vm.load(refresh = true) }, modifier.fillMaxSize()) {
         when (val p = page) {
             Load.Loading -> Loading()
-            is Load.Failed -> if (extra.isEmpty()) ErrorBox(p.error, { vm.load() }) else LazyColumn(contentPadding = PaddingValues(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            is Load.Failed -> LazyColumn(contentPadding = PaddingValues(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (extra.isEmpty()) item("home_error") { ErrorBox(p.error, { vm.load() }, Modifier.padding(8.dp)) }
+                item("new_releases") { NewReleasesSection(onItem, onPlay) }
                 if (recentShelf != null) item("recent") { ShelfRow(recentShelf, onItem, onPlay) }
                 items(extra) { ShelfRow(it, onItem, onPlay) }
             }
             is Load.Ok -> LazyColumn(contentPadding = PaddingValues(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (p.value.chips.isNotEmpty()) item("chips") {
                     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(p.value.chips) { c -> FilterChip(selected == c, { vm.select(c) }, { Text(c.title) }) }
+                        items(p.value.chips) { c -> FilterChip(selected == c, { vm.select(c) }, { Text(choliwoodShelfTitle(c.title, choliwoodName)) }) }
                     }
                 }
+                if (selected == null) item("new_releases") { NewReleasesSection(onItem, onPlay) }
                 if (recentShelf != null && selected == null) item("recent") { ShelfRow(recentShelf, onItem, onPlay) }
-                items(p.value.shelves) { ShelfRow(it, onItem, onPlay) }
+                items(p.value.shelves) { ShelfRow(it.copy(title = choliwoodShelfTitle(it.title, choliwoodName)), onItem, onPlay) }
                 if (selected == null) items(extra) { ShelfRow(it, onItem, onPlay) }
                 if (p.value.shelves.isEmpty() && extra.isEmpty()) item("empty") { Text(stringResource(R.string.nothing_here), Modifier.padding(32.dp)) }
             }

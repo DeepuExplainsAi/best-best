@@ -1,5 +1,11 @@
 package app.dkord.di
 
+import app.dkord.data.room.NtfyRoomTransport
+import app.dkord.data.room.PlayerRoomPlayback
+import app.dkord.data.room.RoomController
+import app.dkord.data.room.RoomPlayback
+import app.dkord.data.room.RoomTransport
+import app.dkord.data.releases.NewReleasesRepository
 import app.dkord.data.auth.AuthStore
 import app.dkord.data.db.AppDatabase
 import app.dkord.data.download.DownloadManager
@@ -32,6 +38,7 @@ val appModule = module {
     single { StreamModule(get()) } bind StreamResolver::class
     single { InnerTubeClient(get<AuthStore>()) }
     single { MusicRepository(get()) }
+    single { NewReleasesRepository.fromMusic(get()) }
     single { SettingsRepository(androidContext()) }
     single { AudioCache(androidContext(), get<SettingsRepository>().settings.value.cacheMb * 1024L * 1024L) }
     single { StreamConfig { get<SettingsRepository>().settings.value.quality } }
@@ -42,6 +49,9 @@ val appModule = module {
     single { QueueStore(androidContext()) }
     single { SleepTimer(CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)) }
     single { PlayerController(androidContext(), get(), get(), get()) }
+    single<RoomTransport> { NtfyRoomTransport() }
+    single<RoomPlayback> { PlayerRoomPlayback(get()) }
+    single { RoomController(get(), get()) }
     single { LyricsRepository() }
     single { Actions(get(), get(), get()) }
     single { app.dkord.data.update.AppUpdater(androidContext()) }

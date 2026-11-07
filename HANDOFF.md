@@ -1,7 +1,7 @@
 # HANDOFF (read this first if you are a new AI/dev)
 
-App: **Dkord**, package `app.dkord`, repo `best-best` (DeepuExplainsAi). User speaks Hinglish/Hindi; reply in Hinglish.
-Rules: all on-device, no backend, no secrets committed, GPL-3.0. Work in 5 parts; after each part: update this file, commit, push, update this file again; then continue automatically without asking.
+App: **Dkord**, package `app.dkord`, repo `dkord` (DeepuExplainsAi). User speaks Hinglish/Hindi; reply in Hinglish.
+Rules: all on-device, no owned backend, no secrets committed, GPL-3.0. Part 12 exception: optional Listen Together uses the public ntfy.sh relay behind RoomTransport; it sends only music metadata/queue/playback timing, never audio, account data, cookies or tokens. Anyone with the code can read/publish; this is not end-to-end encrypted. For Part 12 work sequentially A–F; after each part: update this file, commit, push, update this file again; then continue automatically without asking.
 Default app language English; many translations (values-xx) planned in Part 5.
 UI should look like YouTube Music (dark, red accent, chips, mini player).
 
@@ -114,3 +114,69 @@ Nothing in Part 5 has been run on a phone (sandbox has no emulator). First thing
 - Audio cache size change applies on next app start. AMOLED uses pure black surfaces only for background/surface.
 - Logged-in parsing (liked songs/library/account name) unverified; SAPISIDHASH acceptance unverified.
 - Sign-in does not yet pass cookies to stream resolvers (bot-check videos may still fail even when logged in).
+
+## Part 12 — v0.5.0 (code complete; final manual CI pending)
+- [x] A: Share in FullPlayer and the track menu. Pure `core/TrackShare.kt` formatter + unit tests; Android ACTION_SEND text/plain chooser in `ui/common/Share.kt`. English/Hindi error text and Hindi Share label added. Existing playback/download actions unchanged.
+- [x] B: Two songs-only curated shelves immediately after Bollywood Hits: Choliwood - Popular / Choliwood - Latest. Query strings use popular/new bhojpuri songs internally; English/Hindi UI labels always say Choliwood. Existing ShelfRow whole-shelf queue behavior retained. A pushed as 6d0e8a0.
+- [x] C: Click-to-open New Releases section, 24h/7d chips. NewReleasesRepository interleaves YT Music new-releases songs with four SONGS-only searches, dedupes/caps at 40, fetches StreamInfo uploadDate with Semaphore(6), skips unknown dates, and caches dated candidates in memory for 30 min. Pure ReleaseWindow filter + tests for exact boundaries, sort/dedupe, lazy loading, concurrency/cap and TTL. This uses upload dates, not guaranteed original song release dates. B pushed as 8290a3e.
+- [x] D: Optional Listen Together (FullPlayer overflow menu -> Dest.ListenTogether). RoomTransport + NtfyRoomTransport isolate public ntfy.sh relay (poll since=12h then streaming JSON resumed after cached relay id). RoomCode uses SecureRandom, ten unambiguous uppercase/digit characters. RoomCodec only serializes requested metadata/timing/next <=10 tracks and enforces UTF-8 payload <4000 bytes; rejects malformed versions/ids. RoomController publishes host changes/seeks and 15s playing heartbeats, never publishes guests, ignores stale/future messages, extrapolates guest position, supports manual sync/auto-follow/leave/retry, and logs only generic error categories. PlayerRoomPlayback adapter uses existing public commands; player/autoplay/settings/download implementation unchanged. Privacy/no-audio/encryption/anyone-with-code notices and all new labels translated. Tests cover codes/JSON/limits/relay/poll/resume/roles/heartbeats/sync/errors/cancellation. C pushed as 291fe80.
+- [x] E: versionCode 6 / versionName 0.5.0. Both workflows are workflow_dispatch-only; automatic push/PR/tag triggers removed. Build steps restored unchanged (temporary diagnostics removed). Release validates input tag against v + versionName before setup/build, runs testDebugUnitTest assembleDebug, verifies exactly one nonempty APK, then creates --latest release targeting GITHUB_SHA with feature notes. No release dispatched/published. D passed CI 42354683271 (tests + APK).
+- [x] F: Code/static review and test additions complete. Final v0.5.0 manual CI is BLOCKED by GitHub integration Actions-write permission (HTTP403), not reported as passed. All 31 new English resource keys exist in Hindi with matching placeholders (Hindi Share label also added); no missing new UI resources or unused explicit imports found. Release tag guard and missing/empty/ambiguous APK gates tested without publishing. Existing player/service/settings/downloads/data-yt files verified byte-identical to base. New tests: 28 across six test classes.
+
+### Part 12 Listen Together notes / device checks
+- No owned backend. Public relay exception described at the top; anyone with a code can read AND publish. Codes are not passwords/authentication, and messages are not end-to-end encrypted. No device/user identifiers, account data, cookies, tokens or audio are sent. Room state is memory-only, not restored after process death.
+- Session continues off the room screen while this app process lives; Leave cancels network/subscription/sync work. No new foreground service or background-process guarantee was added. Host alone publishes; guest playback resolves its own streams locally. Existing radio autoplay is not changed.
+- Two-device checks still required: create/share/join, late join/cache, manual sync, automatic follow, host seek/pause/track transitions/queue, leave/rejoin, network loss, HTTP429, app background/process death. Public ntfy reachability cannot be live-tested from this sandbox's network allowlist.
+
+- Part 12D CI follow-up: A/B/C builds and tests passed. D exposed a stream-buffering regression (a finite/offline stream could throw EOF before a guest received the buffered last event); the live flow now uses rendezvous delivery. Explicit FullPlayer slider/lyric seek notifications also cover small seeks without changing PlayerController or its radio logic. Pending controller acknowledgements are handled briefly so stale positions are not re-published. A temporary diagnostic annotation step was used while debugging and was removed in Part E.
+
+### Part 12 manual builds / release
+- Build APK: Actions -> Build debug APK -> Run workflow, select this working branch (after merge select main). Runs tests + assembleDebug, artifact `dkord-debug-apk`.
+- Release: Actions -> Release APK -> Run workflow, select intended commit/branch and input `v0.5.0`. It fails before building if the tag does not equal `v` + app versionName. Tests/build/APK verification must succeed before publication. Release is marked latest so the existing app updater sees it. Stable signing setup remains unchanged. Do not publish a release without the user's request.
+
+### Part 12 final review
+- Home section/chip headings received from upstream are also branded Choliwood (English or Hindi source labels); actual song titles/artists and internal search queries are never rewritten. Tests cover both languages and preservation of existing labels.
+- Final checks: resource XML/unique keys/EN-HI placeholders, explicit import references, valid R.string refs, protected core-file diff, manual-only workflow triggers, unchanged build-job steps, tag validation (matching/mismatching/injection-like input), APK gating (missing/empty/one/ambiguous), added-content secret-literal scan, and git diff --check.
+- Final verification uses manually dispatched build.yml on this branch; release.yml is not dispatched. Real phone UI, live public relay reachability and two-device behavior remain device checks, not claims based on unit tests.
+
+### Part 12 exact file manifest
+
+| File | Change |
+| --- | --- |
+| `.github/workflows/build.yml` | Manual workflow_dispatch only; original test/build/signing/artifact steps preserved. |
+| `.github/workflows/release.yml` | Manual required tag input; version match, tests/build, APK gate, feature notes and latest release targeting the selected SHA. |
+| `HANDOFF.md` | Part 12 A–F progress, public relay exception/privacy, CI/manual release instructions, tests, limitations and this file manifest. |
+| `app/build.gradle.kts` | Version code 6, version name 0.5.0 only. |
+| `app/src/main/java/app/dkord/core/TrackShare.kt` | Pure title/artist/YouTube Music URL share formatter. |
+| `app/src/main/java/app/dkord/data/releases/ReleaseWindow.kt` | Pure 24-hour/7-day date filtering, newest-first ordering and deduplication. |
+| `app/src/main/java/app/dkord/data/releases/NewReleasesRepository.kt` | Lazy song sources, interleaved deduplicated 40-candidate cap, six upload-date lookups maximum, 30-minute memory cache. |
+| `app/src/main/java/app/dkord/data/room/RoomCode.kt` | Secure random unambiguous ten-character room codes, validation and topic mapping. |
+| `app/src/main/java/app/dkord/data/room/RoomMessage.kt` | Versioned metadata-only JSON, safe parsing/relay envelopes, strict UTF-8 size and queue limits, position extrapolation. |
+| `app/src/main/java/app/dkord/data/room/RoomTransport.kt` | Replaceable transport interface and safe relay error type. |
+| `app/src/main/java/app/dkord/data/room/NtfyRoomTransport.kt` | Anonymous public relay publish, cached 12-hour poll, cursor-resumed JSON stream, cancellation and HTTP429 handling. |
+| `app/src/main/java/app/dkord/data/room/RoomPlayback.kt` | Room-only playback interface/state and next-ten-tracks message snapshots. |
+| `app/src/main/java/app/dkord/data/room/PlayerRoomPlayback.kt` | Adapter from room sync to existing local player public commands; no shared audio. |
+| `app/src/main/java/app/dkord/data/room/RoomController.kt` | Host changes/seeks/15-second heartbeats, guest cache/live/manual/automatic follow, session leave/retry and privacy-safe error logging. |
+| `app/src/main/java/app/dkord/di/AppModule.kt` | Singleton bindings for new releases, room transport/controller and local playback adapter. |
+| `app/src/main/java/app/dkord/ui/App.kt` | Listen Together screen route and FullPlayer callback. |
+| `app/src/main/java/app/dkord/ui/Nav.kt` | Serializable ListenTogether destination. |
+| `app/src/main/java/app/dkord/ui/common/Components.kt` | Share item in the existing track menu. |
+| `app/src/main/java/app/dkord/ui/common/Share.kt` | Android ACTION_SEND text/plain chooser and localized failure handling. |
+| `app/src/main/java/app/dkord/ui/player/PlayerUi.kt` | Share button, Listen Together overflow entry, room-only seek notifications and unused-import cleanup; existing player actions retained. |
+| `app/src/main/java/app/dkord/ui/screens/Home.kt` | Choliwood shelves after Bollywood, localized branded headings/chips, lazy New Releases section, original whole-shelf playback retained. |
+| `app/src/main/java/app/dkord/ui/screens/NewReleases.kt` | Expandable lazy shelf, 24h/7d chips, loading/retry/empty states. |
+| `app/src/main/java/app/dkord/ui/screens/ListenTogether.kt` | Create/join/share code, host/guest status, sync/follow/leave/retry and public-relay/privacy notices. |
+| `app/src/main/res/values/strings.xml` | English labels/messages for all new UI and Choliwood branding. |
+| `app/src/main/res/values-hi/strings.xml` | Hindi equivalents for every new UI string; exact Choliwood brand spelling retained. |
+| `app/src/test/java/app/dkord/TrackShareTest.kt` | 2 pure share-text/Unicode/privacy tests. |
+| `app/src/test/java/app/dkord/HomeLabelsTest.kt` | 3 English/Hindi/unchanged-heading branding tests. |
+| `app/src/test/java/app/dkord/NewReleasesTest.kt` | 5 window/boundary/order/dedupe/laziness/concurrency/cap/cache/missing-date tests. |
+| `app/src/test/java/app/dkord/RoomMessageTest.kt` | 10 room code/JSON/UTF-8/queue/metadata/position tests. |
+| `app/src/test/java/app/dkord/RoomControllerTest.kt` | 5 host heartbeat/change/seek, guest follow/roles, stale-message/leave, rate-limit/log-privacy tests. |
+| `app/src/test/java/app/dkord/RoomTransportTest.kt` | 3 cached poll/resume, bounded anonymous publishing and HTTP429 tests using fake HTTP responses. |
+
+### Final CI status / next action
+- A/B/C passed GitHub Actions. D plus the seek/stream fixes passed run 42354683271 (`testDebugUnitTest assembleDebug`, APK artifact uploaded) at commit 3c030f8. Those runs include the 25 new share/date/room tests. The final review adds three Home branding tests (28 new tests total), cleans imports, and bumps the version/workflows; these last changes are NOT yet claimed CI-verified.
+- Manual dispatch of build.yml for this branch was rejected with HTTP403 `Resource not accessible by integration`. Git push/read access works, but the Arena GitHub integration needs Actions-write permission/reconnection. Do not re-enable automatic push/PR triggers to work around it.
+- Owner action: GitHub Actions -> Build debug APK -> Run workflow -> select `arena/2f0c527a-dkord`, or reconnect GitHub in Arena with the needed Actions permission. Then verify the final tests/APK and download `dkord-debug-apk`. No release/tag has been created or published.
+- Final review also checked each new @Test declaration; a missing `fun` keyword in the newly added branding test was corrected before handoff.
