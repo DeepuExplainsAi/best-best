@@ -27,6 +27,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material.icons.filled.Share
 import app.dkord.ui.common.shareTrack
 import androidx.compose.material.icons.filled.Download
@@ -139,7 +142,7 @@ private enum class Panel { ART, LYRICS, QUEUE }
 /** Full-screen player. Swipe down closes; swipe sideways on the art changes track. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FullPlayer(state: PlayerUiState, onClose: () -> Unit, onAddToPlaylist: (Track) -> Unit, onPlayVideo: (Track) -> Unit) {
+fun FullPlayer(state: PlayerUiState, onClose: () -> Unit, onAddToPlaylist: (Track) -> Unit, onPlayVideo: (Track) -> Unit, onListenTogether: () -> Unit) {
     val actions: Actions = koinInject()
     val settingsRepo: app.dkord.data.settings.SettingsRepository = koinInject()
     val controller = actions.player
@@ -147,6 +150,7 @@ fun FullPlayer(state: PlayerUiState, onClose: () -> Unit, onAddToPlaylist: (Trac
     val sleep by controller.sleep.collectAsState()
     val likedIds by remember { actions.library.likedIds() }.collectAsState(emptySet())
     val track = state.current
+    var moreOpen by remember { mutableStateOf(false) }
     var panel by rememberSaveable { mutableStateOf(Panel.ART) }
     var sheet by rememberSaveable { mutableStateOf("") } // "", "speed", "sleep"
     var dragY by remember { mutableFloatStateOf(0f) }
@@ -173,6 +177,13 @@ fun FullPlayer(state: PlayerUiState, onClose: () -> Unit, onAddToPlaylist: (Trac
                 }
                 IconButton({ panel = if (panel == Panel.QUEUE) Panel.ART else Panel.QUEUE }) {
                     Icon(Icons.AutoMirrored.Filled.QueueMusic, stringResource(R.string.queue), tint = if (panel == Panel.QUEUE) MaterialTheme.colorScheme.primary else LocalContentColorOrDefault())
+                }
+                Box {
+                    IconButton({ moreOpen = true }) { Icon(Icons.Default.MoreVert, stringResource(R.string.more)) }
+                    DropdownMenu(moreOpen, { moreOpen = false }) {
+                        DropdownMenuItem(text = { Text(stringResource(R.string.listen_together)) },
+                            onClick = { moreOpen = false; onListenTogether() })
+                    }
                 }
             }
 

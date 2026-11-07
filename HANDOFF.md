@@ -1,7 +1,7 @@
 # HANDOFF (read this first if you are a new AI/dev)
 
 App: **Dkord**, package `app.dkord`, repo `best-best` (DeepuExplainsAi). User speaks Hinglish/Hindi; reply in Hinglish.
-Rules: all on-device, no backend, no secrets committed, GPL-3.0. Work in 5 parts; after each part: update this file, commit, push, update this file again; then continue automatically without asking.
+Rules: all on-device, no owned backend, no secrets committed, GPL-3.0. Part 12 exception: optional Listen Together uses the public ntfy.sh relay behind RoomTransport; it sends only music metadata/queue/playback timing, never audio, account data, cookies or tokens. Anyone with the code can read/publish; this is not end-to-end encrypted. Work in 5 parts; after each part: update this file, commit, push, update this file again; then continue automatically without asking.
 Default app language English; many translations (values-xx) planned in Part 5.
 UI should look like YouTube Music (dark, red accent, chips, mini player).
 
@@ -119,6 +119,11 @@ Nothing in Part 5 has been run on a phone (sandbox has no emulator). First thing
 - [x] A: Share in FullPlayer and the track menu. Pure `core/TrackShare.kt` formatter + unit tests; Android ACTION_SEND text/plain chooser in `ui/common/Share.kt`. English/Hindi error text and Hindi Share label added. Existing playback/download actions unchanged.
 - [x] B: Two songs-only curated shelves immediately after Bollywood Hits: Choliwood - Popular / Choliwood - Latest. Query strings use popular/new bhojpuri songs internally; English/Hindi UI labels always say Choliwood. Existing ShelfRow whole-shelf queue behavior retained. A pushed as 6d0e8a0.
 - [x] C: Click-to-open New Releases section, 24h/7d chips. NewReleasesRepository interleaves YT Music new-releases songs with four SONGS-only searches, dedupes/caps at 40, fetches StreamInfo uploadDate with Semaphore(6), skips unknown dates, and caches dated candidates in memory for 30 min. Pure ReleaseWindow filter + tests for exact boundaries, sort/dedupe, lazy loading, concurrency/cap and TTL. This uses upload dates, not guaranteed original song release dates. B pushed as 8290a3e.
-- [ ] D: Listen Together rooms.
+- [x] D: Optional Listen Together (FullPlayer overflow menu -> Dest.ListenTogether). RoomTransport + NtfyRoomTransport isolate public ntfy.sh relay (poll since=12h then streaming JSON resumed after cached relay id). RoomCode uses SecureRandom, ten unambiguous uppercase/digit characters. RoomCodec only serializes requested metadata/timing/next <=10 tracks and enforces UTF-8 payload <4000 bytes; rejects malformed versions/ids. RoomController publishes host changes/seeks and 15s playing heartbeats, never publishes guests, ignores stale/future messages, extrapolates guest position, supports manual sync/auto-follow/leave/retry, and logs only generic error categories. PlayerRoomPlayback adapter uses existing public commands; player/autoplay/settings/download implementation unchanged. Privacy/no-audio/encryption/anyone-with-code notices and all new labels translated. Tests cover codes/JSON/limits/relay/poll/resume/roles/heartbeats/sync/errors/cancellation. C pushed as 291fe80.
 - [ ] E: Manual-only build/release workflows and version bump.
 - [ ] F: Final checks / CI / handoff.
+
+### Part 12 Listen Together notes / device checks
+- No owned backend. Public relay exception described at the top; anyone with a code can read AND publish. Codes are not passwords/authentication, and messages are not end-to-end encrypted. No device/user identifiers, account data, cookies, tokens or audio are sent. Room state is memory-only, not restored after process death.
+- Session continues off the room screen while this app process lives; Leave cancels network/subscription/sync work. No new foreground service or background-process guarantee was added. Host alone publishes; guest playback resolves its own streams locally. Existing radio autoplay is not changed.
+- Two-device checks still required: create/share/join, late join/cache, manual sync, automatic follow, host seek/pause/track transitions/queue, leave/rejoin, network loss, HTTP429, app background/process death. Public ntfy reachability cannot be live-tested from this sandbox's network allowlist.

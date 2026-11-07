@@ -1,5 +1,10 @@
 package app.dkord.di
 
+import app.dkord.data.room.NtfyRoomTransport
+import app.dkord.data.room.PlayerRoomPlayback
+import app.dkord.data.room.RoomController
+import app.dkord.data.room.RoomPlayback
+import app.dkord.data.room.RoomTransport
 import app.dkord.data.releases.NewReleasesRepository
 import app.dkord.data.auth.AuthStore
 import app.dkord.data.db.AppDatabase
@@ -44,6 +49,9 @@ val appModule = module {
     single { QueueStore(androidContext()) }
     single { SleepTimer(CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)) }
     single { PlayerController(androidContext(), get(), get(), get()) }
+    single<RoomTransport> { NtfyRoomTransport() }
+    single<RoomPlayback> { PlayerRoomPlayback(get()) }
+    single { RoomController(get(), get()) }
     single { LyricsRepository() }
     single { Actions(get(), get(), get()) }
     single { app.dkord.data.update.AppUpdater(androidContext()) }

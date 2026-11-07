@@ -116,4 +116,27 @@
     <string name="last_24_hours">पिछले 24 घंटे</string>
     <string name="last_7_days">पिछले 7 दिन</string>
     <string name="no_new_songs">कोई नया गाना नहीं मिला</string>
+    <string name="listen_together">साथ में सुनें</string>
+    <string name="room_create">रूम बनाएँ</string>
+    <string name="room_join">रूम में जुड़ें</string>
+    <string name="room_code">रूम कोड</string>
+    <string name="room_invitation">मेरे Dkord रूम में जुड़ें: %1$s</string>
+    <string name="room_share_code">रूम कोड शेयर करें</string>
+    <string name="room_host">आप होस्ट हैं</string>
+    <string name="room_guest">आप मेहमान हैं</string>
+    <string name="room_host_controls">गाना बदलने, चलाने, रोकने या आगे-पीछे करने के लिए प्लेयर इस्तेमाल करें। मेहमान आपका प्लेबैक फ़ॉलो कर सकते हैं।</string>
+    <string name="room_host_listening">होस्ट %1$s सुन रहा है</string>
+    <string name="room_waiting">होस्ट के गाना चलाने का इंतज़ार…</string>
+    <string name="room_sync_play">सिंक करें और चलाएँ</string>
+    <string name="room_follow">होस्ट को अपने-आप फ़ॉलो करें</string>
+    <string name="room_leave">रूम छोड़ें</string>
+    <string name="room_anyone_can_join">कोड वाला कोई भी व्यक्ति जुड़ सकता है</string>
+    <string name="room_local_audio">गाने आपके फ़ोन पर आपकी अपनी स्ट्रीम से चलते हैं। ऑडियो शेयर नहीं होता।</string>
+    <string name="room_privacy_note">यह ntfy.sh सार्वजनिक रिले इस्तेमाल करता है। गाने की जानकारी, कतार और प्लेबैक समय भेजे जाते हैं; खाते का डेटा या कुकी नहीं। रूम संदेश एंड-टू-एंड एन्क्रिप्टेड नहीं हैं।</string>
+    <string name="room_stays_connected">ऐप चलने तक रूम जुड़ा रहता है, जब तक आप उसे नहीं छोड़ते।</string>
+    <string name="room_invalid_code">10 अक्षरों का रूम कोड डालें। A–Z और 2–9 इस्तेमाल करें, I या O नहीं।</string>
+    <string name="room_network_error">रूम कनेक्शन विफल। इंटरनेट जाँचें और फिर कोशिश करें।</string>
+    <string name="room_rate_limit">रूम रिले अनुरोध सीमित कर रहा है। एक मिनट रुककर फिर कोशिश करें।</string>
+    <string name="room_message_error">रूम की स्थिति सुरक्षित रूप से शेयर नहीं हो सकी। दूसरा गाना चुनकर फिर कोशिश करें।</string>
+    <string name="room_playback_error">प्लेबैक सिंक नहीं हो सका। फिर सिंक करें और चलाएँ दबाएँ।</string>
 </resources>
