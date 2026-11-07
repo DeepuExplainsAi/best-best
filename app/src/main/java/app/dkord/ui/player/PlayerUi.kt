@@ -27,6 +27,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Share
+import app.dkord.ui.common.shareTrack
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Bedtime
@@ -141,6 +143,7 @@ fun FullPlayer(state: PlayerUiState, onClose: () -> Unit, onAddToPlaylist: (Trac
     val actions: Actions = koinInject()
     val settingsRepo: app.dkord.data.settings.SettingsRepository = koinInject()
     val controller = actions.player
+    val shareContext = LocalContext.current
     val sleep by controller.sleep.collectAsState()
     val likedIds by remember { actions.library.likedIds() }.collectAsState(emptySet())
     val track = state.current
@@ -164,6 +167,7 @@ fun FullPlayer(state: PlayerUiState, onClose: () -> Unit, onAddToPlaylist: (Trac
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClose) { Icon(Icons.Default.KeyboardArrowDown, stringResource(R.string.close)) }
                 Spacer(Modifier.weight(1f))
+                IconButton({ shareTrack(shareContext, track) }) { Icon(Icons.Default.Share, stringResource(R.string.share)) }
                 IconButton({ panel = if (panel == Panel.LYRICS) Panel.ART else Panel.LYRICS }) {
                     Icon(Icons.Default.Lyrics, stringResource(R.string.lyrics), tint = if (panel == Panel.LYRICS) MaterialTheme.colorScheme.primary else LocalContentColorOrDefault())
                 }

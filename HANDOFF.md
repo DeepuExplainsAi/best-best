@@ -114,3 +114,11 @@ Nothing in Part 5 has been run on a phone (sandbox has no emulator). First thing
 - Audio cache size change applies on next app start. AMOLED uses pure black surfaces only for background/surface.
 - Logged-in parsing (liked songs/library/account name) unverified; SAPISIDHASH acceptance unverified.
 - Sign-in does not yet pass cookies to stream resolvers (bot-check videos may still fail even when logged in).
+
+## Part 12 — v0.5.0 (in progress)
+- [x] A: Share in FullPlayer and the track menu. Pure `core/TrackShare.kt` formatter + unit tests; Android ACTION_SEND text/plain chooser in `ui/common/Share.kt`. English/Hindi error text and Hindi Share label added. Existing playback/download actions unchanged.
+- [ ] B: Choliwood shelves.
+- [ ] C: Lazy, dated New Releases.
+- [ ] D: Listen Together rooms.
+- [ ] E: Manual-only build/release workflows and version bump.
+- [ ] F: Final checks / CI / handoff.

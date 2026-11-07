@@ -108,4 +108,6 @@
     <string name="repeat_off">रिपीट बंद</string>
     <string name="repeat_all">सब रिपीट</string>
     <string name="repeat_one">एक गाना रिपीट</string>
+    <string name="share">शेयर करें</string>
+    <string name="share_failed">यह टेक्स्ट शेयर करने के लिए कोई ऐप उपलब्ध नहीं है।</string>
 </resources>
