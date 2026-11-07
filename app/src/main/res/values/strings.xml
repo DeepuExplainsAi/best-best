@@ -160,4 +160,6 @@
     <string name="repeat_all">Repeat all</string>
     <string name="repeat_one">Repeat one</string>
     <string name="share_failed">No app is available to share this text.</string>
+    <string name="choliwood_popular">Choliwood - Popular</string>
+    <string name="choliwood_latest">Choliwood - Latest</string>
 </resources>

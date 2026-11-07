@@ -110,4 +110,6 @@
     <string name="repeat_one">एक गाना रिपीट</string>
     <string name="share">शेयर करें</string>
     <string name="share_failed">यह टेक्स्ट शेयर करने के लिए कोई ऐप उपलब्ध नहीं है।</string>
+    <string name="choliwood_popular">Choliwood - लोकप्रिय</string>
+    <string name="choliwood_latest">Choliwood - नए गाने</string>
 </resources>

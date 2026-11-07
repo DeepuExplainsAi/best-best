@@ -117,7 +117,7 @@ Nothing in Part 5 has been run on a phone (sandbox has no emulator). First thing
 
 ## Part 12 — v0.5.0 (in progress)
 - [x] A: Share in FullPlayer and the track menu. Pure `core/TrackShare.kt` formatter + unit tests; Android ACTION_SEND text/plain chooser in `ui/common/Share.kt`. English/Hindi error text and Hindi Share label added. Existing playback/download actions unchanged.
-- [ ] B: Choliwood shelves.
+- [x] B: Two songs-only curated shelves immediately after Bollywood Hits: Choliwood - Popular / Choliwood - Latest. Query strings use popular/new bhojpuri songs internally; English/Hindi UI labels always say Choliwood. Existing ShelfRow whole-shelf queue behavior retained. A pushed as 6d0e8a0.
 - [ ] C: Lazy, dated New Releases.
 - [ ] D: Listen Together rooms.
 - [ ] E: Manual-only build/release workflows and version bump.

@@ -79,6 +79,8 @@ class HomeViewModel(private val repo: MusicRepository) : ViewModel() {
 
 private val CURATED = listOf(
     "Bollywood Hits" to "latest bollywood hit songs",
+    "dkord:choliwood:popular" to "popular bhojpuri songs",
+    "dkord:choliwood:latest" to "new bhojpuri songs",
     "Trending Punjabi" to "trending punjabi songs",
     "Romantic Hindi" to "romantic hindi songs",
     "Arijit Singh" to "arijit singh best songs",
@@ -100,7 +102,14 @@ fun HomeScreen(onItem: (BrowseItem) -> Unit, onPlay: (List<app.dkord.core.Track>
     val page by vm.page.collectAsState()
     val refreshing by vm.refreshing.collectAsState()
     val selected by vm.chip.collectAsState()
-    val extra by vm.extra.collectAsState()
+    val extraShelves by vm.extra.collectAsState()
+    val extra = extraShelves.map { shelf ->
+        shelf.copy(title = when (shelf.title) {
+            "dkord:choliwood:popular" -> stringResource(R.string.choliwood_popular)
+            "dkord:choliwood:latest" -> stringResource(R.string.choliwood_latest)
+            else -> shelf.title
+        })
+    }
     val library: app.dkord.data.library.LibraryRepository = koinInject()
     val recent by remember { library.recent(15) }.collectAsState(emptyList())
     val recentShelf = recent.takeIf { it.isNotEmpty() }?.let { l ->
