@@ -223,7 +223,7 @@ private fun TabContent(
                 val m = Modifier.fillMaxSize()
                 when (selected) {
                     Tab.HOME -> HomeScreen(onItem, onPlay, m)
-                    Tab.SEARCH -> SearchScreen(onItem, onPlay, onMenu, m)
+                    Tab.SEARCH -> SearchScreen(onItem, onPlay, onMenu, m, onMessage = say)
                     Tab.LIBRARY -> LibraryScreen({ push(Dest.Playlist(it)) }, { push(Dest.Liked) }, { push(Dest.Recent) }, onItem, say, m)
                     Tab.DOWNLOADS -> DownloadsScreen(onPlay, onMenu, m)
                 }

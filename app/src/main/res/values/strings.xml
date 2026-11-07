@@ -231,4 +231,20 @@
     <string name="update_banner_version">Version %1$s available</string>
     <string name="update_action">Update</string>
     <string name="room_attention">Needs attention</string>
+    <string name="search_history_title">Recent searches</string>
+    <string name="search_history_empty">Your searches will appear here.</string>
+    <string name="search_submit">Search</string>
+    <string name="search_edit_query">Edit search</string>
+    <string name="search_pin">Pin search</string>
+    <string name="search_unpin">Unpin search</string>
+    <string name="search_remove">Remove search</string>
+    <string name="search_filter_pinned">%1$s · Pinned</string>
+    <string name="search_pin_limit">You can pin up to %1$d searches.</string>
+    <string name="search_clear_all">Clear all</string>
+    <string name="search_clear_title">Clear search history?</string>
+    <string name="search_clear_message">Remove all recent and pinned searches from this device?</string>
+    <string name="search_history_load_failed">Could not load saved searches.</string>
+    <string name="search_history_write_failed">Could not update search history. Try again.</string>
+    <string name="search_more_failed">Could not load more results.</string>
+    <string name="search_load_more">Load more</string>
 </resources>
