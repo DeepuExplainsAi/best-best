@@ -55,6 +55,17 @@ class RoomControllerTest {
         controller.leave()
     }
 
+    @Test fun small_explicit_host_seek_is_published_before_player_acknowledgement() = runTest {
+        val playback = Playback(RoomPlaybackState(song, listOf(song), playing = false))
+        val relay = Relay()
+        val controller = RoomController(relay, playback, backgroundScope) { clock }
+        controller.create(); runCurrent()
+        controller.seeked(100); runCurrent()
+        assertEquals(100L, relay.sent.last().positionMs)
+        assertEquals(2, relay.sent.size)
+        controller.leave()
+    }
+
     @Test fun guest_reads_cache_resumes_live_and_requires_sync_unless_follow_is_enabled() = runTest {
         val msg = RoomMessage(song.id, song.title, song.artist, positionMs = 1_000, playing = true, timestamp = clock - 1_000)
         val relay = Relay(RoomEvent(msg, "cached123"))

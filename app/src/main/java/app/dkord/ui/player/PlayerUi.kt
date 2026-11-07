@@ -87,6 +87,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import app.dkord.R
+import app.dkord.data.room.RoomController
 import app.dkord.core.Track
 import app.dkord.data.lyrics.LrcParser
 import app.dkord.data.lyrics.Lyrics
@@ -146,6 +147,8 @@ fun FullPlayer(state: PlayerUiState, onClose: () -> Unit, onAddToPlaylist: (Trac
     val actions: Actions = koinInject()
     val settingsRepo: app.dkord.data.settings.SettingsRepository = koinInject()
     val controller = actions.player
+    val rooms: RoomController = koinInject()
+    val seek: (Long) -> Unit = { position -> controller.seekTo(position); rooms.seeked(position) }
     val shareContext = LocalContext.current
     val sleep by controller.sleep.collectAsState()
     val likedIds by remember { actions.library.likedIds() }.collectAsState(emptySet())
@@ -191,7 +194,7 @@ fun FullPlayer(state: PlayerUiState, onClose: () -> Unit, onAddToPlaylist: (Trac
                 AnimatedContent(panel, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "panel") { p ->
                     when (p) {
                         Panel.ART -> ArtPanel(track, controller)
-                        Panel.LYRICS -> LyricsPanel(track, state.positionMs, controller)
+                        Panel.LYRICS -> LyricsPanel(track, state.positionMs, seek)
                         Panel.QUEUE -> QueuePanel(state, controller)
                     }
                 }
@@ -213,7 +216,7 @@ fun FullPlayer(state: PlayerUiState, onClose: () -> Unit, onAddToPlaylist: (Trac
                 }
             }
 
-            SeekBar(state, controller)
+            SeekBar(state, seek)
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 IconButton(controller::toggleShuffle) { Icon(Icons.Default.Shuffle, stringResource(R.string.shuffle), tint = if (state.shuffle) MaterialTheme.colorScheme.primary else LocalContentColorOrDefault()) }
@@ -297,7 +300,7 @@ private fun ArtPanel(track: Track, controller: PlayerController) {
 }
 
 @Composable
-private fun SeekBar(state: PlayerUiState, controller: PlayerController) {
+private fun SeekBar(state: PlayerUiState, onSeek: (Long) -> Unit) {
     var scrubbing by remember { mutableStateOf(false) }
     var scrub by remember { mutableFloatStateOf(0f) }
     val dur = state.durationMs.coerceAtLeast(1)
@@ -306,7 +309,7 @@ private fun SeekBar(state: PlayerUiState, controller: PlayerController) {
         Slider(
             value = shown, valueRange = 0f..dur.toFloat(),
             onValueChange = { scrubbing = true; scrub = it },
-            onValueChangeFinished = { controller.seekTo(scrub.toLong()); scrubbing = false },
+            onValueChangeFinished = { onSeek(scrub.toLong()); scrubbing = false },
             enabled = state.durationMs > 0,
             colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color.White),
         )
@@ -318,7 +321,7 @@ private fun SeekBar(state: PlayerUiState, controller: PlayerController) {
 }
 
 @Composable
-private fun LyricsPanel(track: Track, positionMs: Long, controller: PlayerController) {
+private fun LyricsPanel(track: Track, positionMs: Long, onSeek: (Long) -> Unit) {
     val repo: LyricsRepository = koinInject()
     val result by produceState<Result<Lyrics?>?>(null, track.id) {
         value = null
@@ -343,7 +346,7 @@ private fun LyricsPanel(track: Track, positionMs: Long, controller: PlayerContro
                             line.text.ifBlank { "♪" },
                             style = MaterialTheme.typography.titleLarge,
                             color = if (i == idx) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                            modifier = Modifier.fillMaxWidth().clickable { controller.seekTo(line.timeMs) }.padding(vertical = 10.dp),
+                            modifier = Modifier.fillMaxWidth().clickable { onSeek(line.timeMs) }.padding(vertical = 10.dp),
                         )
                     }
                 }

@@ -40,6 +40,17 @@ class RoomController(
     val state: StateFlow<RoomState> = _state
     private var roomJob: Job? = null
     private var syncJob: Job? = null
+    private data class Seek(val videoId: String, val positionMs: Long, val at: Long)
+    private var pendingSeek: Seek? = null
+    private var hostChanges: Channel<Unit>? = null
+
+    /** Explicit UI seeks (including small lyric/slider seeks) are published without tick heuristics. */
+    fun seeked(positionMs: Long) {
+        if (_state.value.role != RoomRole.HOST) return
+        val id = playback.current().current?.id ?: return
+        pendingSeek = Seek(id, positionMs.coerceIn(0, RoomCodec.MAX_POSITION_MS), now())
+        hostChanges?.trySend(Unit)
+    }
 
     fun create() {
         leave()
@@ -67,6 +78,7 @@ class RoomController(
 
     fun leave() {
         roomJob?.cancel(); roomJob = null
+        hostChanges = null; pendingSeek = null
         syncJob?.cancel(); syncJob = null
         _state.value = RoomState()
     }
@@ -117,6 +129,7 @@ class RoomController(
         roomJob = scope.launch {
             coroutineScope {
                 val changes = Channel<Unit>(Channel.CONFLATED)
+                hostChanges = changes
                 launch {
                     var previous: RoomPlaybackState? = null
                     var observedAt = now()
@@ -139,7 +152,15 @@ class RoomController(
                 var sentAt = 0L
                 for (ignored in changes) {
                     val stamp = maxOf(now(), sentAt + 1)
-                    val message = roomMessage(playback.current(), stamp)
+                    var snapshot = playback.current()
+                    pendingSeek?.let { seek ->
+                        val expected = seek.positionMs + if (snapshot.playing) (now() - seek.at).coerceAtLeast(0) else 0
+                        if (snapshot.current?.id == seek.videoId && now() - seek.at < 2_000 && abs(snapshot.positionMs - expected) > 50) {
+                            // The MediaController may not have acknowledged this UI seek yet.
+                            snapshot = snapshot.copy(positionMs = expected)
+                        } else pendingSeek = null
+                    }
+                    val message = roomMessage(snapshot, stamp)
                     if (message == null) { _state.update { it.copy(connecting = false) }; continue }
                     try {
                         transport.publish(code, message)

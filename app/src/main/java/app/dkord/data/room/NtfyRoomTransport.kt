@@ -7,6 +7,7 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -63,7 +64,7 @@ class NtfyRoomTransport(
             }
             throw RoomTransportException(false, "Room relay stream disconnected")
         }
-    }.flowOn(Dispatchers.IO)
+    }.flowOn(Dispatchers.IO).buffer(0)
 
     private fun topicUrl(code: String) = base.newBuilder().addPathSegment(RoomCode.topic(code)).build()
 
