@@ -1,18 +1,28 @@
 # HANDOFF (read this first if you are a new AI/dev)
 
 App: **Dkord**, package `app.dkord`, repo `dkord` (DeepuExplainsAi). User speaks Hinglish/Hindi; reply in Hinglish.
+## Current handoff — 2026-11-07 (supersedes older status/environment notes)
+- Work stays on **arena/27a3df64-dkord**, PR **#3 OPEN**, not merged: https://github.com/DeepuExplainsAi/dkord/pull/3 . Parts 13 and 14 A/B/C/D are code/static-review complete; app-source preparation commit **94c2926386cc056ea0da3cd64ac6c1d60960dcde**. Later handoff-only commits do not change that source.
+- Prepared **v0.6.0 / code 7**, original `app.dkord` / alias `dkord` / stable signing identity retained. Latest published release is still **v0.5.0**. **No v0.6.0 tag, APK or release has been created.**
+- Delivered practical/professional Listen Together (numbered instructions instead of the technical paragraph, code copy/share and session/reconnect/sync fixes); global English default with explicit English/Hindi selection; compact non-modal Home Update/Later and direct-latest APK resolution; preserved collapsed New Releases/categories/full-shelf playback and existing motion work.
+- **41 local Python regressions PASS**, resources/XML/workflow shell syntax/changed Kotlin syntax parser/protected-engine comparison PASS. **148 Android/Kotlin unit tests (68 new since main) remain uncompiled/unrun for this source**, and phone/live multi-device behavior is not verified. Static/parser tests are not a Kotlin/Android execution claim.
+- Fresh final `build.yml` dispatch at 94c2926 failed **HTTP403 Resource not accessible by integration**; metadata confirms no Build debug APK run started. Do not repeatedly ask the owner for debug builds or restore automatic triggers.
+- Final owner fallback is ONE fresh **Release APK** run on **arena/27a3df64-dkord**, tag input **v0.6.0**. That workflow runs all Python + Android unit tests/build and the actual old/new APK signer/package/version gates **before** creating the tag/release page/APK. Do not manually create the tag, rerun old jobs, rotate keys or republish v0.5.0. No automatic PR merge.
+- Read the final Part 14 sections/acceptance matrix at the end for details. No local Java/Gradle/SDK provisioning/build is allowed in this session. Only English/Hindi translations actually exist; other languages must not be inferred from the phone or exposed without real translations.
+
+## Standing rules / historical project background
 Rules: all on-device, no owned backend, no secrets committed, GPL-3.0. Part 12 exception: optional Listen Together uses the public ntfy.sh relay behind RoomTransport; it sends only music metadata/queue/playback timing, never audio, account data, cookies or tokens. Anyone with the code can read/publish; this is not end-to-end encrypted. For Part 12 work sequentially A–F; after each part: update this file, commit, push, update this file again; then continue automatically without asking.
-Default app language English; many translations (values-xx) planned in Part 5.
+Default app language is English irrespective of phone locale; supported English/Hindi changes require an explicit app choice (Part 14 supersedes the old phone-locale behavior).
 UI should look like YouTube Music (dark, red accent, chips, mini player).
 
 ## Verified versions (2026-11-05)
 AGP 9.5.0, Kotlin 2.4.21, KSP 2.3.13, Compose BOM 2026.09.00, Media3 1.11.1, NewPipeExtractor v0.26.5 (JitPack), desugar_jdk_libs_nio 2.1.5, Koin 4.2.2 (chosen over Hilt), Coil 3.6.3, Room 2.8.5, WorkManager 2.12.0, Gradle 9.8.2, compileSdk/targetSdk 37, minSdk 26.
 
-## Environment notes
-- gh token now has `workflow` scope; git credential helper = `gh auth git-credential`. Use `GIT_TERMINAL_PROMPT=0 git push`.
-- Git identity set locally to DeepuExplainsAi noreply.
-- Sandbox has 1 CPU / ~500MB RAM: cannot run Gradle builds locally. Builds are verified through GitHub Actions (`gh run watch`).
-- JDK 21 installed via apt; `mkdir -p /usr/share/man/man1` was needed. `sh` has no brace expansion.
+## Current environment notes
+- Local git/PR access works; Actions dispatch still returns HTTP403 `Resource not accessible by integration`. Never request passwords/tokens/keystores in chat or assume a previous workflow-scope note grants current Actions write permission.
+- Git identity is DeepuExplainsAi noreply. Push only `origin arena/27a3df64-dkord`.
+- User requires Android compilation/tests/APKs through Actions only; do not install/download/provision JDK, Gradle or the Android SDK locally. Earlier development-sandbox installation notes are historical, not instructions for this session.
+- Python guard/resource/contract checks can run locally; they do not validate Android runtime/UI behavior.
 
 ## Progress
 - [x] Part 1: setup + CI. Pushed to main; CI green, artifact `dkord-debug-apk` uploaded.
@@ -292,3 +302,9 @@ The owner requested these together before the next release: remove the prominent
 - **Tag input: `v0.6.0`** (versionName 0.6.0 / versionCode 7), branch **`arena/27a3df64-dkord`**. Do not republish v0.5.0 and do not manually create the tag first.
 - Actions → **Release APK** → **Run workflow** → select **arena/27a3df64-dkord** → tag **v0.6.0** → **Run workflow**. Start a fresh run, not old Re-run jobs. No extra owner Build debug APK run is required: this single Release run includes all Python + Android unit tests, build and signing/update compatibility gates before any tag/release/APK publication.
 - If any test, build, signing identity, package or increasing-version gate fails, publication is skipped; fix that failure rather than changing keys, bypassing tests, deleting old releases or reinstalling/resetting the app. The successful path creates the release page and attaches `Dkord-v0.6.0.apk` automatically. PR #3 stays open; no merge is authorized/performed.
+
+
+### Final Actions/PR status after preparation
+- One fresh final command, `gh workflow run build.yml --repo DeepuExplainsAi/dkord --ref arena/27a3df64-dkord`, at source **94c2926** returned HTTP403 `Resource not accessible by integration` (workflow 407956887). **No run was started**. Follow-up Build debug APK run listing returned `[]`.
+- Follow-up PR query: **#3 OPEN**, head 94c2926 before this documentation-only update; no merge performed. Latest release query still **v0.5.0**; remote tag query for **v0.6.0** returned no tag. No next APK/release/device success is claimed.
+- No further owner CI questions: use the single final Release APK → arena/27a3df64-dkord → v0.6.0 → fresh Run workflow path above. If that run fails any gate it will not publish. Full Android suite execution/report status remains pending that run.
