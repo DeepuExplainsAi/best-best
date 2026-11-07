@@ -21,7 +21,27 @@ jobs:
           KS: ${{ secrets.DKORD_KEYSTORE_B64 }}
         run: |
           if [ -n "$KS" ]; then echo "$KS" | base64 -d > "$RUNNER_TEMP/dkord.p12"; echo "DKORD_KEYSTORE=$RUNNER_TEMP/dkord.p12" >> "$GITHUB_ENV"; echo "DKORD_KEYSTORE_PASS=${{ secrets.DKORD_KEYSTORE_PASS }}" >> "$GITHUB_ENV"; fi
-      - run: ./gradlew testDebugUnitTest assembleDebug --stacktrace
+      - run: |
+          set -o pipefail
+          ./gradlew testDebugUnitTest assembleDebug --stacktrace 2>&1 | tee "$RUNNER_TEMP/dkord-check.log"
+      - name: Temporary failure diagnostics
+        if: failure()
+        run: |
+          python3 - <<'PYCODE'
+          import glob, os, xml.etree.ElementTree as E
+          lines = open(os.path.join(os.environ['RUNNER_TEMP'], 'dkord-check.log')).read().splitlines()
+          messages = [line for line in lines if line.lstrip().startswith('e:') or ' FAILED' in line]
+          for path in glob.glob('app/build/test-results/**/*.xml', recursive=True):
+              for node in E.parse(path).getroot().iter('testcase'):
+                  for failure in list(node.findall('failure')) + list(node.findall('error')):
+                      messages.append(node.get('classname', '') + '.' + node.get('name', '') + ': ' + failure.get('message', ''))
+                      messages.extend((failure.text or '').splitlines()[:8])
+          if not messages:
+              messages = [line for line in lines if 'Exception' in line or 'Error' in line or 'Caused by' in line][:12]
+          for message in messages[:30]:
+              safe = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+              print('::error title=Build diagnostic::' + safe)
+          PYCODE
       - uses: actions/upload-artifact@v7
         with:
           name: dkord-debug-apk
