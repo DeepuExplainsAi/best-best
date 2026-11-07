@@ -228,4 +228,6 @@
     <string name="app_language">App language</string>
     <string name="language_english">English (default)</string>
     <string name="language_hindi">Hindi</string>
+    <string name="update_banner_version">Version %1$s available</string>
+    <string name="update_action">Update</string>
 </resources>

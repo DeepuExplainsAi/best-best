@@ -228,4 +228,6 @@
     <string name="signed_in">साइन इन है</string>
     <string name="starting">शुरू हो रहा है…</string>
     <string name="use_default">डिफ़ॉल्ट इस्तेमाल करें</string>
+    <string name="update_banner_version">वर्शन %1$s उपलब्ध है</string>
+    <string name="update_action">अपडेट</string>
 </resources>

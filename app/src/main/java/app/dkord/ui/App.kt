@@ -54,7 +54,8 @@ import app.dkord.core.Track
 import app.dkord.player.PlaybackEvents
 import app.dkord.player.PlaybackProblem
 import app.dkord.ui.common.Actions
-import app.dkord.ui.common.HomeUpdatePrompt
+import app.dkord.ui.common.HomeUpdateNotice
+import app.dkord.ui.common.ObserveAppUpdates
 import app.dkord.ui.common.DkordMotion
 import app.dkord.ui.common.PlaylistPicker
 import app.dkord.ui.common.TrackMenu
@@ -169,10 +170,7 @@ fun App() {
         ) { FullPlayer(state, onClose = { playerOpen = false }, onAddToPlaylist = { pickTracks = listOf(it) }, onPlayVideo = { playerOpen = false; push(Dest.Video(it.id, it.title)) }, onListenTogether = { playerOpen = false; push(Dest.ListenTogether) }) }
     }
 
-    HomeUpdatePrompt(
-        visible = top == null && tab == Tab.HOME && !playerOpen && menuTrack == null && pickTracks == null,
-        onOpenSettings = { push(Dest.Settings) },
-    )
+    ObserveAppUpdates()
 
     menuTrack?.let { t -> TrackMenu(t, onDismiss = { menuTrack = null }, onAddToPlaylist = { pickTracks = listOf(it) }) }
     pickTracks?.let { PlaylistPicker(it, onDismiss = { pickTracks = null }, onResult = ::say) }
@@ -200,15 +198,18 @@ private fun TabContent(
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(R.drawable.logo), null, Modifier.size(32.dp).clip(androidx.compose.foundation.shape.CircleShape))
-                        Text(stringResource(R.string.app_title), Modifier.padding(start = 10.dp))
-                    }
-                },
-                actions = { IconButton(openSettings) { Icon(Icons.Default.Settings, stringResource(R.string.settings)) } },
-            )
+            Column {
+                TopAppBar(
+                    title = {
+                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(R.drawable.logo), null, Modifier.size(32.dp).clip(androidx.compose.foundation.shape.CircleShape))
+                            Text(stringResource(R.string.app_title), Modifier.padding(start = 10.dp))
+                        }
+                    },
+                    actions = { IconButton(openSettings) { Icon(Icons.Default.Settings, stringResource(R.string.settings)) } },
+                )
+                HomeUpdateNotice(visible = tab == Tab.HOME, onOpenSettings = openSettings)
+            }
         },
     ) { pad ->
         AnimatedContent(

@@ -10,10 +10,18 @@ import androidx.core.content.FileProvider
 import androidx.core.content.pm.PackageInfoCompat
 import androidx.core.net.toUri
 import app.dkord.data.net.Http
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.withContext
+import okhttp3.Authenticator
+import okhttp3.CookieJar
 import okhttp3.Request
 import java.io.File
 import java.io.IOException
@@ -25,15 +33,29 @@ class AppUpdater(context: Context) {
     val currentVersion: String = app.packageManager.getPackageInfo(app.packageName, 0).versionName.orEmpty()
     private val preferences = app.getSharedPreferences("app-updates", Context.MODE_PRIVATE)
     private val downloader = UpdateDownloader()
+    private val releaseHttp = Http.client.newBuilder().cookieJar(CookieJar.NO_COOKIES).authenticator(Authenticator.NONE)
+        .followRedirects(false).followSslRedirects(false).build()
     private fun file(info: UpdateInfo) = File(File(app.cacheDir, "updates"), "Dkord-${info.version}.apk")
 
     private val coordinator = UpdateCoordinator(
         platform = object : UpdatePlatform {
             override suspend fun findUpdate(): UpdateInfo? = withContext(Dispatchers.IO) {
                 val request = Request.Builder().url(LATEST).header("Accept", "application/vnd.github+json").build()
-                Http.client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) throw IOException("Update check failed")
-                    UpdateReleases.parse(response.body.string(), currentVersion)
+                coroutineScope {
+                    val call = releaseHttp.newCall(request)
+                    val cancellation = launch(start = CoroutineStart.UNDISPATCHED) {
+                        try { awaitCancellation() } finally { call.cancel() }
+                    }
+                    try {
+                        call.execute().use { response ->
+                            if (!response.isSuccessful) throw IOException("Update check failed")
+                            if (response.body.source().request(2L * 1024 * 1024 + 1)) throw IOException("Update metadata too large")
+                            UpdateReleases.parse(response.body.string(), currentVersion)
+                        }
+                    } catch (e: IOException) {
+                        currentCoroutineContext().ensureActive()
+                        throw e
+                    } finally { cancellation.cancel() }
                 }
             }
             override suspend fun download(info: UpdateInfo, onProgress: (UpdateProgress) -> Unit) {
@@ -42,17 +64,19 @@ class AppUpdater(context: Context) {
                 withContext(Dispatchers.IO) {
                     try { verifyApk(apk, info) }
                     catch (e: Exception) { apk.delete(); throw e }
+                    apk.parentFile?.listFiles()?.filter { it != apk && it.isFile &&
+                        it.name.startsWith("Dkord-") && (it.name.endsWith(".apk") || it.name.endsWith(".apk.part")) }?.forEach { it.delete() }
                 }
             }
             override fun canInstall() = app.packageManager.canRequestPackageInstalls()
             override fun openInstaller(info: UpdateInfo) {
+                val apk = file(info)
+                if (!apk.isFile || apk.length() == 0L || info.sizeBytes?.let { it != apk.length() } == true) throw UpdateVerificationException()
                 if (!canInstall()) {
                     app.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, "package:${app.packageName}".toUri())
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                     return
                 }
-                val apk = file(info)
-                if (!apk.isFile || apk.length() == 0L) throw IOException("Update file missing")
                 val uri = FileProvider.getUriForFile(app, "${app.packageName}.files", apk)
                 app.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive")
                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK))

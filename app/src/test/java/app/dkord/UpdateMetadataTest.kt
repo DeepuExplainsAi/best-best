@@ -61,4 +61,21 @@ class UpdateMetadataTest {
         assertTrue(shouldPromptUpdate(info, deferred, 1000))
         assertTrue(shouldPromptUpdate(info.copy(version = "0.6.1"), deferred, 999))
     }
+
+    @Test fun users_several_versions_behind_receive_the_same_latest_apk_directly() {
+        val latest = release().replace("0.6.0", "0.9.0")
+        for (installed in listOf("0.1.0", "0.3.0", "0.5.0", "0.6.0", "0.8.0")) {
+            val info = checkNotNull(UpdateReleases.parse(latest, installed))
+            assertEquals("0.9.0", info.version)
+            assertEquals(apk.replace("0.6.0", "0.9.0"), info.apkUrl)
+        }
+    }
+
+    @Test fun missing_or_non_boolean_release_status_cannot_be_assumed_stable() {
+        for (json in listOf(release().replace("\"draft\":false,", ""),
+            release().replace("\"prerelease\":false", "\"prerelease\":\"unknown\""))) {
+            try { UpdateReleases.parse(json, "0.5.0"); fail("Unknown release status accepted") }
+            catch (_: IOException) { }
+        }
+    }
 }

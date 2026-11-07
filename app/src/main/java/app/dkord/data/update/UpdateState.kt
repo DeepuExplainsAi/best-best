@@ -18,7 +18,7 @@ data class UpdateProgress(val downloadedBytes: Long = 0, val totalBytes: Long? =
     val remainingBytes: Long? get() = totalBytes?.takeIf { it > 0 }?.let { (it - downloadedBytes).coerceAtLeast(0) }
 }
 
-enum class UpdatePhase { IDLE, CHECKING, UP_TO_DATE, AVAILABLE, DOWNLOADING, READY, FAILED }
+enum class UpdatePhase { IDLE, CHECKING, PREPARING, UP_TO_DATE, AVAILABLE, DOWNLOADING, READY, FAILED }
 enum class UpdateFailure { NETWORK, VERIFICATION, INSTALLER }
 
 data class UpdateState(
@@ -43,7 +43,9 @@ object UpdateReleases {
 
     fun parse(body: String, currentVersion: String): UpdateInfo? {
         val root = lenientJson.parseToJsonElement(body)
-        if (root.at("draft")?.jsonPrimitive?.booleanOrNull == true || root.at("prerelease")?.jsonPrimitive?.booleanOrNull == true) return null
+        val draft = root.at("draft")?.jsonPrimitive?.booleanOrNull ?: throw IOException("Missing release status")
+        val prerelease = root.at("prerelease")?.jsonPrimitive?.booleanOrNull ?: throw IOException("Missing release status")
+        if (draft || prerelease) return null
         val tag = root.at("tag_name").str() ?: throw IOException("Missing release version")
         if (!version.matches(tag)) throw IOException("Unsupported release version")
         if (!isNewer(tag, currentVersion)) return null

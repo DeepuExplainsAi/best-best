@@ -33,57 +33,76 @@ class UpdateCoordinator(
     private var downloadJob: Job? = null
     private var nextCheck = Long.MIN_VALUE
     private var handledVersion: String? = null
+    private var installerOpen = false
+    private fun busy() = checkJob?.isCompleted == false || downloadJob?.isCompleted == false
 
     fun onForeground() {
+        installerOpen = false // Returning from the external permission/installer Activity permits a retry.
         if (state.value.phase == UpdatePhase.READY && state.value.needsInstallPermission && platform.canInstall()) install()
         else check()
     }
 
     fun check(force: Boolean = false) {
-        if (checkJob?.isCompleted == false || downloadJob?.isCompleted == false || state.value.phase == UpdatePhase.READY) return
-        if (!force && elapsed() < nextCheck) return
-        nextCheck = elapsed() + CHECK_INTERVAL_MS
+        if (busy() || (!force && elapsed() < nextCheck)) return
+        val previous = state.value
         mutableState.update { it.copy(phase = UpdatePhase.CHECKING, failure = null, promptAllowed = false) }
         checkJob = scope.launch {
             try {
-                val info = platform.findUpdate()
-                mutableState.value = if (info == null) UpdateState(phase = UpdatePhase.UP_TO_DATE)
-                else UpdateState(phase = UpdatePhase.AVAILABLE, info = info,
-                    promptAllowed = handledVersion != info.version && shouldPromptUpdate(info, readDeferred(), now()))
-            } catch (e: CancellationException) { throw e }
-            catch (_: Exception) {
+                val info = findLatest()
+                mutableState.value = when {
+                    info == null -> UpdateState(phase = UpdatePhase.UP_TO_DATE)
+                    previous.phase == UpdatePhase.READY && previous.info == info -> previous.copy(failure = null)
+                    else -> UpdateState(phase = UpdatePhase.AVAILABLE, info = info,
+                        promptAllowed = handledVersion != info.version && shouldPromptUpdate(info, readDeferred(), now()))
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
                 nextCheck = elapsed() + RETRY_INTERVAL_MS
-                mutableState.update { it.copy(phase = UpdatePhase.FAILED, failure = UpdateFailure.NETWORK) }
+                mutableState.update { it.copy(phase = UpdatePhase.FAILED, failure = UpdateFailure.NETWORK, promptAllowed = false) }
             }
         }
     }
 
     fun later() {
+        if (state.value.phase != UpdatePhase.AVAILABLE) return
         val info = state.value.info ?: return
         saveDeferred(DeferredUpdate(info.version, now() + LATER_MS))
         mutableState.update { it.copy(promptAllowed = false) }
     }
 
+    /** Resolve /latest again after consent: never walk the user through intermediate releases. */
     fun download() {
-        if (downloadJob?.isCompleted == false || state.value.phase == UpdatePhase.CHECKING) return
-        val info = state.value.info ?: return
-        if (state.value.phase == UpdatePhase.READY) { install(); return }
-        handledVersion = info.version
-        mutableState.value = UpdateState(UpdatePhase.DOWNLOADING, info, UpdateProgress(totalBytes = info.sizeBytes))
+        if (busy()) return
+        val previous = state.value
+        val advertised = previous.info ?: return
+        handledVersion = advertised.version
+        installerOpen = false
+        mutableState.value = previous.copy(phase = UpdatePhase.PREPARING, failure = null, promptAllowed = false)
         downloadJob = scope.launch {
             try {
-                platform.download(info) { progress ->
+                val latest = findLatest()
+                if (latest == null) {
+                    mutableState.value = UpdateState(phase = UpdatePhase.UP_TO_DATE)
+                    return@launch
+                }
+                handledVersion = latest.version
+                val reuse = previous.phase == UpdatePhase.READY && previous.info == latest
+                mutableState.value = if (reuse) previous.copy(failure = null, promptAllowed = false)
+                else UpdateState(UpdatePhase.DOWNLOADING, latest, UpdateProgress(totalBytes = latest.sizeBytes))
+                if (!reuse) platform.download(latest) { progress ->
                     mutableState.update { if (it.phase == UpdatePhase.DOWNLOADING) it.copy(progress = progress) else it }
                 }
                 mutableState.update { it.copy(phase = UpdatePhase.READY) }
-                install()
+                openReadyInstaller()
             } catch (e: CancellationException) {
-                mutableState.value = UpdateState(UpdatePhase.AVAILABLE, info)
+                mutableState.update { UpdateState(UpdatePhase.AVAILABLE, it.info ?: advertised) }
                 throw e
             } catch (_: UpdateVerificationException) {
-                mutableState.update { it.copy(phase = UpdatePhase.FAILED, failure = UpdateFailure.VERIFICATION) }
+                mutableState.update { it.copy(phase = UpdatePhase.FAILED, failure = UpdateFailure.VERIFICATION, promptAllowed = false) }
             } catch (_: Exception) {
-                mutableState.update { it.copy(phase = UpdatePhase.FAILED, failure = UpdateFailure.NETWORK) }
+                nextCheck = elapsed() + RETRY_INTERVAL_MS
+                mutableState.update { it.copy(phase = UpdatePhase.FAILED, failure = UpdateFailure.NETWORK, promptAllowed = false) }
             }
         }
     }
@@ -91,18 +110,29 @@ class UpdateCoordinator(
     fun cancel() { downloadJob?.cancel() }
 
     fun install() {
-        val value = state.value
-        val info = value.info ?: return
-        if (value.phase != UpdatePhase.READY) return
+        if (busy() || state.value.phase != UpdatePhase.READY || installerOpen) return
+        // A week-old ready APK must not hide newer releases. Fresh permission returns work offline.
+        if (elapsed() >= nextCheck) download() else openReadyInstaller()
+    }
+
+    private fun openReadyInstaller() {
+        val info = state.value.info ?: return
+        if (state.value.phase != UpdatePhase.READY || installerOpen) return
         try {
-            val needsPermission = !platform.canInstall()
-            mutableState.update { it.copy(needsInstallPermission = needsPermission, failure = null) }
+            installerOpen = true
+            mutableState.update { it.copy(needsInstallPermission = !platform.canInstall(), failure = null) }
             platform.openInstaller(info)
+        } catch (_: UpdateVerificationException) {
+            installerOpen = false
+            mutableState.update { it.copy(phase = UpdatePhase.FAILED, failure = UpdateFailure.VERIFICATION) }
         } catch (_: Exception) {
-            // Keep the verified APK so the user can retry the installer without downloading again.
+            installerOpen = false
+            // Keep the verified APK for an installer retry, not a redundant download.
             mutableState.update { it.copy(failure = UpdateFailure.INSTALLER) }
         }
     }
+
+    private suspend fun findLatest(): UpdateInfo? = platform.findUpdate().also { nextCheck = elapsed() + CHECK_INTERVAL_MS }
 
     companion object {
         const val CHECK_INTERVAL_MS = 30L * 60 * 1000

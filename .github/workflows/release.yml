@@ -14,6 +14,7 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     env:
       TAG: ${{ inputs.tag }}
     steps:
@@ -31,7 +32,7 @@ jobs:
               sys.exit('Release tag must match app versionName: expected ' + expected)
           print('Release tag matches app versionName: ' + expected)
           PY
-      - name: Test APK update compatibility guard
+      - name: Run resource, app-contract and release-guard regressions
         run: python3 -B -m unittest discover -s .github/scripts -p 'test_*.py' -v
       - uses: actions/setup-java@v6
         with:
@@ -60,7 +61,17 @@ jobs:
             printf '%s\n' "$KS_PASS"
             printf '%s\n' "$delimiter"
           } >> "$GITHUB_ENV"
-      - run: ./gradlew testDebugUnitTest assembleDebug --stacktrace
+      - name: Run the full Android unit suite and build the APK
+        run: ./gradlew testDebugUnitTest assembleDebug --stacktrace
+      - name: Upload Android unit-test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-unit-test-reports
+          path: |
+            app/build/test-results/testDebugUnitTest/
+            app/build/reports/tests/testDebugUnitTest/
+          if-no-files-found: ignore
       - name: Verify and prepare release APK
         run: |
           shopt -s nullglob
@@ -91,13 +102,14 @@ jobs:
         run: |
           printf 'Dkord %s\n\n' "$TAG" > "$RUNNER_TEMP/release-notes.md"
           cat >> "$RUNNER_TEMP/release-notes.md" <<'NOTES'
-          - Home update prompts with Update / Later and live APK size, downloaded and remaining MB in Settings.
+          - Compact, non-modal Home update notice with Update / Later, direct latest-version downloads, and live downloaded / total / remaining MB in Settings.
+          - English interface by default on every phone; choose English or Hindi explicitly in Settings.
           - Verified update downloads and the Android system installer; no uninstall or signing-key change.
           - Collapsed-by-default New Releases with category filters and Last 24 hours / 7 days / 10 days windows, album discovery and publication-date metadata checks.
           - Short screen, tab, panel and press animations while preserving tab state and the existing playback queue.
           - Share songs from the full player or track menu with a YouTube Music link.
           - Choliwood - Popular and Choliwood - Latest shelves on Home.
-          - Listen Together: create/share/join rooms, manual sync and optional automatic following through the public ntfy.sh relay. Audio stays on each phone; anyone with the code can access the room, and room messages are not end-to-end encrypted.
+          - Listen Together: numbered create / share / join / sync instructions, code copy/share, multiple friends, reconnects and optional Follow host controls. Technical transport/privacy details are in the repository README.
           - Music-only anonymous YouTube Music Radio autoplay with songs-search fallback.
 
           Install the APK over your existing Dkord app to keep playlists, likes, downloads and settings (same package and signing key).
