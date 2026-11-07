@@ -67,6 +67,8 @@ class AppContractsTest(unittest.TestCase):
         settings = read("app/src/main/java/app/dkord/ui/screens/Settings.kt")
         themes = read("app/src/main/res/values/themes.xml")
         self.assertIn("AppLanguages.initialize(this)", application)
+        self.assertIn("AppLanguages.deviceLocale(this)", application)
+        self.assertIn(".systemLocales[0]", read("app/src/main/java/app/dkord/data/settings/AppLanguages.kt"))
         self.assertIn("class MainActivity : AppCompatActivity()", activity)
         self.assertIn("AppLanguages.initialize(newBase)", activity)
         self.assertIn("Theme.AppCompat.DayNight.NoActionBar", themes)
@@ -127,6 +129,14 @@ class AppContractsTest(unittest.TestCase):
             self.assertNotIn("continue-on-error:", workflow)
             self.assertNotIn("-x test", workflow)
             self.assertIn("python3 -B -m unittest discover", workflow)
+
+    def test_signing_password_is_passed_as_an_environment_value_not_shell_source(self):
+        for path in (".github/workflows/build.yml", ".github/workflows/release.yml"):
+            workflow = read(path)
+            self.assertIn("KS_PASS: ${{ secrets.DKORD_KEYSTORE_PASS }}", workflow)
+            self.assertIn("-storepass:env KS_PASS", workflow)
+            self.assertNotRegex(workflow, r'(?m)^\s+(?:echo|printf).*secrets\.DKORD_KEYSTORE_PASS')
+            self.assertIn('DKORD_KEYSTORE_PASS<<%s', workflow)
 
     def test_release_publication_is_after_tests_build_and_real_apk_signer_gate(self):
         workflow = read(".github/workflows/release.yml")

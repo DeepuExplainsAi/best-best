@@ -2,7 +2,6 @@ package app.dkord
 
 import android.app.Application
 import android.content.res.Configuration
-import android.content.res.Resources
 import android.util.Log
 import app.dkord.core.DebugLog
 import app.dkord.data.net.NewPipeDownloader
@@ -13,13 +12,12 @@ import org.koin.core.context.startKoin
 import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.localization.ContentCountry
 import org.schabi.newpipe.extractor.localization.Localization
-import java.util.Locale
 
 class DkordApp : Application() {
     override fun onCreate() {
         super.onCreate()
         // Interface language must not silently change the music backend's existing device region.
-        val l = Resources.getSystem().configuration.locales[0] ?: Locale.getDefault()
+        val l = AppLanguages.deviceLocale(this)
         AppLanguages.initialize(this)
         DebugLog.sink = { Log.println(if (it.level == 'E') Log.ERROR else if (it.level == 'W') Log.WARN else Log.DEBUG, "Dkord/${it.tag}", it.msg) }
         startKoin { androidContext(this@DkordApp); modules(appModule) }

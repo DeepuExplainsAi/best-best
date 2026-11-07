@@ -75,5 +75,7 @@ class UpdateDownloader(client: OkHttpClient = Http.client) {
         }
     }
 
-    companion object { const val MAX_BYTES = 250L * 1024 * 1024 }
+    companion object {
+        const val MAX_BYTES = 250L * 1024 * 1024
+    }
 }

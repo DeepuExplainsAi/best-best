@@ -46,8 +46,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -71,7 +73,7 @@ fun ListenTogetherScreen(onBack: () -> Unit, onOpenPlayer: () -> Unit, onMessage
     val context = LocalContext.current
     var input by rememberSaveable { mutableStateOf("") }
     Scaffold(topBar = {
-        TopAppBar(title = { Text(stringResource(R.string.listen_together)) }, navigationIcon = {
+        TopAppBar(title = { Text(stringResource(R.string.listen_together), maxLines = 1, overflow = TextOverflow.Ellipsis) }, navigationIcon = {
             IconButton(onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
         })
     }) { padding ->
@@ -103,6 +105,7 @@ fun ListenTogetherScreen(onBack: () -> Unit, onOpenPlayer: () -> Unit, onMessage
                 val status = when {
                     state.connecting && state.error != null -> R.string.room_reconnecting
                     state.connecting -> R.string.room_connecting
+                    state.error != null -> R.string.room_attention
                     isHost -> R.string.room_ready
                     state.syncing -> R.string.room_syncing
                     state.host == null -> R.string.room_waiting
@@ -182,12 +185,13 @@ fun ListenTogetherScreen(onBack: () -> Unit, onOpenPlayer: () -> Unit, onMessage
 
 @Composable
 private fun RoomInstructions() {
+    val badgeSize = with(LocalDensity.current) { 16.sp.toDp() + 10.dp }
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(stringResource(R.string.room_how_to), style = MaterialTheme.typography.titleMedium)
             listOf(R.string.room_step_create, R.string.room_step_share, R.string.room_step_join, R.string.room_step_sync).forEachIndexed { index, text ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(26.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(badgeSize).background(MaterialTheme.colorScheme.primaryContainer, CircleShape), contentAlignment = Alignment.Center) {
                         Text((index + 1).toString(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
                     }
                     Text(stringResource(text), Modifier.padding(start = 12.dp).weight(1f), style = MaterialTheme.typography.bodyMedium)

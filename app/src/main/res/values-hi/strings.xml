@@ -230,4 +230,5 @@
     <string name="use_default">डिफ़ॉल्ट इस्तेमाल करें</string>
     <string name="update_banner_version">वर्शन %1$s उपलब्ध है</string>
     <string name="update_action">अपडेट</string>
+    <string name="room_attention">ध्यान दें</string>
 </resources>

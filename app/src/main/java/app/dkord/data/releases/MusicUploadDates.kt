@@ -62,7 +62,9 @@ internal class MusicUploadDates(client: OkHttpClient = Http.client) {
         }
     }
 
-    companion object { private const val MAX_PAGE_CHARS = 3 * 1024 * 1024 }
+    companion object {
+        private const val MAX_PAGE_CHARS = 3 * 1024 * 1024
+    }
 }
 
 private val META = Regex("<meta\\s[^>]*>", RegexOption.IGNORE_CASE)

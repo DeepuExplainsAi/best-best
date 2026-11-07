@@ -16,23 +16,27 @@ object AppLanguages {
     private const val LANGUAGE = "language"
     private const val PLATFORM_INITIALIZED = "platform-initialized"
     private fun preferences(context: Context) = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
-    private fun country() = Resources.getSystem().configuration.locales[0]?.country.orEmpty()
+    /** Android 13+ exposes the real system locales separately from this app's locale override. */
+    fun deviceLocale(context: Context): Locale = (if (Build.VERSION.SDK_INT >= 33)
+        context.getSystemService(LocaleManager::class.java).systemLocales[0]
+    else Resources.getSystem().configuration.locales[0]) ?: Locale.getDefault()
 
     fun initialize(context: Context) {
         val preferences = preferences(context)
         val saved = preferences.getString(LANGUAGE, null)
+        val country = deviceLocale(context).country
         if (Build.VERSION.SDK_INT >= 33) {
             val manager = context.getSystemService(LocaleManager::class.java)
             val platform = manager.applicationLocales[0]
             val selected = resolveAppLanguage(saved, platform?.toLanguageTag(), platformManaged = true,
                 platformInitialized = preferences.getBoolean(PLATFORM_INITIALIZED, false))
             preferences.edit().putString(LANGUAGE, selected.tag).putBoolean(PLATFORM_INITIALIZED, true).apply()
-            if (AppLanguage.fromTag(platform?.toLanguageTag()) != selected || (platform?.country.isNullOrEmpty() && country().isNotEmpty())) {
-                manager.applicationLocales = LocaleList.forLanguageTags(appLanguageTag(selected, country()))
+            if (AppLanguage.fromTag(platform?.toLanguageTag()) != selected || (platform?.country.isNullOrEmpty() && country.isNotEmpty())) {
+                manager.applicationLocales = LocaleList.forLanguageTags(appLanguageTag(selected, country))
             }
         } else {
             val selected = resolveAppLanguage(saved)
-            val tag = appLanguageTag(selected, country())
+            val tag = appLanguageTag(selected, country)
             AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tag))
             applyLegacyResources(context, tag)
         }
@@ -44,7 +48,7 @@ object AppLanguages {
 
     fun select(context: Context, language: AppLanguage) {
         preferences(context).edit().putString(LANGUAGE, language.tag).apply()
-        val tag = appLanguageTag(language, country())
+        val tag = appLanguageTag(language, deviceLocale(context).country)
         // AppCompat recreates the Activity; saved Compose navigation and the singleton player survive.
         AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tag))
         if (Build.VERSION.SDK_INT < 33) applyLegacyResources(context, tag)
