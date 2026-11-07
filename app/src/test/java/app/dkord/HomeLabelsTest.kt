@@ -14,7 +14,7 @@ class HomeLabelsTest {
         assertEquals("नए Choliwood गाने", choliwoodShelfTitle("नए भोजपुरी गाने", "Choliwood"))
     }
 
-    @Test fun_existing_choliwood_and_other_headers_are_not_rewritten() {
+    @Test fun existing_choliwood_and_other_headers_are_not_rewritten() {
         assertEquals("Choliwood - Popular", choliwoodShelfTitle("Choliwood - Popular", "Choliwood"))
         assertEquals("Bollywood Hits", choliwoodShelfTitle("Bollywood Hits", "Choliwood"))
     }
